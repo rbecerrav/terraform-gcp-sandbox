@@ -1,0 +1,46 @@
+name: Terraform Destroy
+
+on:
+  # Manual trigger — you run this when you want to destroy
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to confirm destruction of all resources'
+        required: true
+        default: ""
+
+  # Optional: scheduled auto-destroy (uncomment and adjust cron as needed)
+  # schedule:
+  #   - cron: "0 22 * * 5"  # Every Friday at 22:00 UTC (adjust to your timezone)
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    # Only runs if the manual confirmation input matches "destroy"
+    if: github.event_name == 'schedule' || github.event.inputs.confirm == 'destroy'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
