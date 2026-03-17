@@ -15,4 +15,6 @@ resource "google_compute_instance" "sandbox" {
   }
 
   tags = ["sandbox"]
+
+  depends_on = [google_project_service.apis]
 }
