@@ -1,7 +1,8 @@
-# Add your GCP resources here.
-# Example:
+# Resources are split across dedicated files:
+#   cloud_sql.tf — Cloud SQL instance, database, user
+#   iam.tf       — Service accounts and IAM bindings
+#   secrets.tf   — Secret Manager secrets for DB connection
+#   apis.tf      — GCP API enablement
 #
-# resource "google_storage_bucket" "example" {
-#   name     = "my-sandbox-bucket-${var.project_id}"
-#   location = var.region
-# }
+# Conexion Cloud Run -> Cloud SQL: Auth Proxy nativo (sin VPC Connector).
+# Ver specs/01_plan_infraestructura.md para detalle de la decision.
