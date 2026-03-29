@@ -36,7 +36,7 @@ resource "google_cloud_scheduler_job" "session_login_jet_exc" {
   retry_config {
     retry_count          = 3
     min_backoff_duration = "10s"
-    max_backoff_duration = "300s"
+    max_backoff_duration = "400s"
     max_doublings        = 3
   }
 
@@ -79,7 +79,7 @@ resource "google_cloud_scheduler_job" "session_login_fly_belair" {
   retry_config {
     retry_count          = 3
     min_backoff_duration = "10s"
-    max_backoff_duration = "300s"
+    max_backoff_duration = "400s"
     max_doublings        = 3
   }
 
