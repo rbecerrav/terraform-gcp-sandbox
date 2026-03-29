@@ -22,7 +22,7 @@ resource "google_cloud_scheduler_job" "session_login_jet_exc" {
 
     # Solo nombres de secretos — ningún valor sensible queda en Terraform ni en tfstate
     body = base64encode(jsonencode({
-      company_id = "1"
+      company_id      = "1"
       email_secret    = "jet-exc-email"
       password_secret = "jet-exc-password"
     }))
@@ -65,7 +65,7 @@ resource "google_cloud_scheduler_job" "session_login_fly_belair" {
     }
 
     body = base64encode(jsonencode({
-      company_id = "2"
+      company_id      = "2"
       email_secret    = "fly-belair-email"
       password_secret = "fly-belair-password"
     }))
