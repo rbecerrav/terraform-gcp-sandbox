@@ -4,12 +4,7 @@ on:
   push:
     branches:
       - main  # Triggered only after a PR is merged (approved + merged = apply)
-  workflow_dispatch:  # Allow manual trigger (e.g. to deploy a specific image SHA)
-    inputs:
-      session_service_image:
-        description: "Full image URI to deploy (e.g. .../session-service-api:abc1234). Leave empty to use the SECRET default."
-        required: false
-        default: ""
+  workflow_dispatch:  # Allow manual trigger
 
 permissions:
   contents: read
@@ -31,6 +26,30 @@ jobs:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Resolve latest image from Artifact Registry
+        id: image
+        run: |
+          REGISTRY="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docker-images/session-service-api"
+
+          # Get the most recently pushed tag (excluding 'latest')
+          TAG=$(gcloud artifacts docker tags list "${REGISTRY}" \
+            --sort-by="~createTime" \
+            --filter="tag!=latest" \
+            --limit=1 \
+            --format="value(tag)")
+
+          if [ -z "$TAG" ]; then
+            echo "::error::No image tags found in Artifact Registry for ${REGISTRY}"
+            exit 1
+          fi
+
+          FULL_IMAGE="${REGISTRY}:${TAG}"
+          echo "image=${FULL_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "Resolved image: ${FULL_IMAGE}"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -41,10 +60,6 @@ jobs:
 
       - name: Terraform Apply
         run: |
-          IMAGE="${{ github.event.inputs.session_service_image }}"
-          if [ -z "$IMAGE" ]; then
-            IMAGE="${{ secrets.SESSION_SERVICE_IMAGE }}"
-          fi
           terraform apply -auto-approve \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
-            -var="session_service_image=${IMAGE}"
+            -var="session_service_image=${{ steps.image.outputs.image }}"
