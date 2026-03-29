@@ -41,7 +41,10 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+        run: |
+          terraform plan -no-color \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="session_service_image=${{ secrets.SESSION_SERVICE_IMAGE }}"
         continue-on-error: true
 
       # Posts the plan output as a comment on the PR

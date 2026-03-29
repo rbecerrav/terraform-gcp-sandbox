@@ -43,4 +43,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+        run: |
+          terraform destroy -auto-approve \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="session_service_image=${{ secrets.SESSION_SERVICE_IMAGE }}"

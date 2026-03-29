@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - main  # Triggered only after a PR is merged (approved + merged = apply)
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:  # Allow manual trigger (e.g. to deploy a specific image SHA)
+    inputs:
+      session_service_image:
+        description: "Full image URI to deploy (e.g. .../session-service-api:abc1234). Leave empty to use the SECRET default."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -35,4 +40,11 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+        run: |
+          IMAGE="${{ github.event.inputs.session_service_image }}"
+          if [ -z "$IMAGE" ]; then
+            IMAGE="${{ secrets.SESSION_SERVICE_IMAGE }}"
+          fi
+          terraform apply -auto-approve \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="session_service_image=${IMAGE}"
