@@ -84,6 +84,14 @@ variable "capsolver_task_type" {
   default     = "ReCaptchaV2TaskProxyLess"
 }
 
+# --- CI/CD ---
+
+variable "github_repo" {
+  description = "GitHub repository in 'org/repo' format. Used to restrict Workload Identity Federation to this specific repo."
+  type        = string
+  default     = "FraktalSoftware/Fraktal-JetExcellence-Scrappers"
+}
+
 # --- Cloud Scheduler ---
 
 variable "scheduler_timezone" {
@@ -96,4 +104,60 @@ variable "scheduler_login_cron" {
   description = "Cron schedule for session login jobs (default: every 5 hours)"
   type        = string
   default     = "0 */5 * * *"
+}
+
+variable "scraper_scheduler_cron" {
+  description = "Cron schedule for scraper ETL jobs (default: daily at 6am Bogota time)"
+  type        = string
+  default     = "0 6 * * *"
+}
+
+# --- Scraper services map ---
+
+variable "scraper_services" {
+  description = "Map of scraper services to deploy on Cloud Run. Image is derived automatically from project_id and service name."
+  type = map(object({
+    container_port        = number
+    stored_procedure_name = string
+    endpoint_path         = string
+    cpu                   = optional(string, "1")
+    memory                = optional(string, "512Mi")
+  }))
+  default = {
+    accounting-fuel-savings = {
+      container_port        = 8081
+      stored_procedure_name = "staging.sp_etl_load_fuel_purchases"
+      endpoint_path         = "/api/v1/accounting-fuel-savings/execution"
+    }
+    accounting-invoice = {
+      container_port        = 8082
+      stored_procedure_name = "staging.sp_etl_load_invoices"
+      endpoint_path         = "/api/v1/accounting-invoice/execution"
+    }
+    aircraft-discrepancies = {
+      container_port        = 8083
+      stored_procedure_name = "staging.sp_etl_load_discrepancies"
+      endpoint_path         = "/api/v1/aircraft-discrepancies/execution"
+    }
+    aircraft-logged-flights = {
+      container_port        = 8084
+      stored_procedure_name = "staging.sp_etl_load_flight_segments"
+      endpoint_path         = "/api/v1/aircraft-logged-flights/execution"
+    }
+    aircraft-utilization = {
+      container_port        = 8085
+      stored_procedure_name = "staging.sp_etl_load_utilization"
+      endpoint_path         = "/api/v1/aircraft-utilization/execution"
+    }
+    sales-productivity = {
+      container_port        = 8086
+      stored_procedure_name = "staging.sp_etl_load_sales_productivity"
+      endpoint_path         = "/api/v1/sales-productivity/execution"
+    }
+    trip-finances = {
+      container_port        = 8087
+      stored_procedure_name = "staging.sp_process_trip_finances"
+      endpoint_path         = "/api/v1/trip-finances/execution"
+    }
+  }
 }
