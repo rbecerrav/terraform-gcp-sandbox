@@ -115,13 +115,49 @@ variable "scraper_scheduler_cron" {
 # --- Scraper services map ---
 
 variable "scraper_services" {
-  description = "Map of scraper services to deploy on Cloud Run"
+  description = "Map of scraper services to deploy on Cloud Run. Image is derived automatically from project_id and service name."
   type = map(object({
-    image                 = string
     container_port        = number
     stored_procedure_name = string
     endpoint_path         = string
     cpu                   = optional(string, "1")
     memory                = optional(string, "512Mi")
   }))
+  default = {
+    accounting-fuel-savings = {
+      container_port        = 8081
+      stored_procedure_name = "staging.sp_etl_load_fuel_purchases"
+      endpoint_path         = "/api/v1/accounting-fuel-savings/execution"
+    }
+    accounting-invoice = {
+      container_port        = 8082
+      stored_procedure_name = "staging.sp_etl_load_invoices"
+      endpoint_path         = "/api/v1/accounting-invoice/execution"
+    }
+    aircraft-discrepancies = {
+      container_port        = 8083
+      stored_procedure_name = "staging.sp_etl_load_discrepancies"
+      endpoint_path         = "/api/v1/aircraft-discrepancies/execution"
+    }
+    aircraft-logged-flights = {
+      container_port        = 8084
+      stored_procedure_name = "staging.sp_etl_load_flight_segments"
+      endpoint_path         = "/api/v1/aircraft-logged-flights/execution"
+    }
+    aircraft-utilization = {
+      container_port        = 8085
+      stored_procedure_name = "staging.sp_etl_load_utilization"
+      endpoint_path         = "/api/v1/aircraft-utilization/execution"
+    }
+    sales-productivity = {
+      container_port        = 8086
+      stored_procedure_name = "staging.sp_etl_load_sales_productivity"
+      endpoint_path         = "/api/v1/sales-productivity/execution"
+    }
+    trip-finances = {
+      container_port        = 8087
+      stored_procedure_name = "staging.sp_process_trip_finances"
+      endpoint_path         = "/api/v1/trip-finances/execution"
+    }
+  }
 }

@@ -28,7 +28,8 @@ resource "google_cloud_run_v2_service" "scraper" {
     }
 
     containers {
-      image = each.value.image
+      # Imagen derivada automáticamente: el nombre del servicio (each.key) coincide con el nombre de la imagen en Artifact Registry
+      image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/${each.key}:latest"
 
       ports {
         container_port = each.value.container_port
