@@ -33,6 +33,29 @@ resource "google_artifact_registry_repository_iam_member" "cicd_ar_writer" {
   member     = "serviceAccount:${google_service_account.cicd.email}"
 }
 
+# --- IAM: permisos para terraform apply desde GitHub Actions ---
+
+# Crear/actualizar Cloud Run services y gestionar IAM sobre ellos (setIamPolicy)
+resource "google_project_iam_member" "cicd_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.cicd.email}"
+}
+
+# Crear/actualizar Cloud Scheduler jobs
+resource "google_project_iam_member" "cicd_scheduler_admin" {
+  project = var.project_id
+  role    = "roles/cloudscheduler.admin"
+  member  = "serviceAccount:${google_service_account.cicd.email}"
+}
+
+# Necesario para asignar service accounts a Cloud Run services en terraform apply
+resource "google_service_account_iam_member" "cicd_act_as_scraper" {
+  service_account_id = google_service_account.scraper.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.cicd.email}"
+}
+
 # --- Workload Identity Pool ---
 # Contenedor lógico de proveedores de identidad externos (en este caso GitHub)
 
