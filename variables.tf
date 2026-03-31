@@ -84,6 +84,14 @@ variable "capsolver_task_type" {
   default     = "ReCaptchaV2TaskProxyLess"
 }
 
+# --- CI/CD ---
+
+variable "github_repo" {
+  description = "GitHub repository in 'org/repo' format. Used to restrict Workload Identity Federation to this specific repo."
+  type        = string
+  default     = "FraktalSoftware/Fraktal-JetExcellence-Scrappers"
+}
+
 # --- Cloud Scheduler ---
 
 variable "scheduler_timezone" {
@@ -96,4 +104,24 @@ variable "scheduler_login_cron" {
   description = "Cron schedule for session login jobs (default: every 5 hours)"
   type        = string
   default     = "0 */5 * * *"
+}
+
+variable "scraper_scheduler_cron" {
+  description = "Cron schedule for scraper ETL jobs (default: daily at 6am Bogota time)"
+  type        = string
+  default     = "0 6 * * *"
+}
+
+# --- Scraper services map ---
+
+variable "scraper_services" {
+  description = "Map of scraper services to deploy on Cloud Run"
+  type = map(object({
+    image                 = string
+    container_port        = number
+    stored_procedure_name = string
+    endpoint_path         = string
+    cpu                   = optional(string, "1")
+    memory                = optional(string, "512Mi")
+  }))
 }

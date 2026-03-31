@@ -16,6 +16,7 @@ resource "google_project_service" "apis" {
     "servicenetworking.googleapis.com",    # Private Service Access (Cloud SQL private IP)
     "vpcaccess.googleapis.com",            # Serverless VPC Access (Cloud Run -> VPC)
     "cloudscheduler.googleapis.com",       # Cloud Scheduler
+    "sts.googleapis.com",                  # Security Token Service — requerido por Workload Identity Federation
   ])
 
   project            = var.project_id
