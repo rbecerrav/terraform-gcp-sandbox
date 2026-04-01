@@ -120,6 +120,7 @@ variable "scraper_services" {
     container_port        = number
     stored_procedure_name = string
     endpoint_path         = string
+    schedule_order        = number  # 0–6: determina el slot de inicio (5am + order*30min para c1, +15min para c2)
     cpu                   = optional(string, "1")
     memory                = optional(string, "512Mi")
   }))
@@ -128,36 +129,43 @@ variable "scraper_services" {
       container_port        = 8081
       stored_procedure_name = "staging.sp_etl_load_fuel_purchases"
       endpoint_path         = "/api/v1/accounting-fuel-savings/execution"
+      schedule_order        = 0  # company-1: 5:00 | company-2: 5:15
     }
     accounting-invoice = {
       container_port        = 8082
       stored_procedure_name = "staging.sp_etl_load_invoices"
       endpoint_path         = "/api/v1/accounting-invoice/execution"
+      schedule_order        = 1  # company-1: 5:30 | company-2: 5:45
     }
     aircraft-discrepancies = {
       container_port        = 8083
       stored_procedure_name = "staging.sp_etl_load_discrepancies"
       endpoint_path         = "/api/v1/aircraft-discrepancies/execution"
+      schedule_order        = 2  # company-1: 6:00 | company-2: 6:15
     }
     aircraft-logged-flights = {
       container_port        = 8084
       stored_procedure_name = "staging.sp_etl_load_flight_segments"
       endpoint_path         = "/api/v1/aircraft-logged-flights/execution"
+      schedule_order        = 3  # company-1: 6:30 | company-2: 6:45
     }
     aircraft-utilization = {
       container_port        = 8085
       stored_procedure_name = "staging.sp_etl_load_utilization"
       endpoint_path         = "/api/v1/aircraft-utilization/execution"
+      schedule_order        = 4  # company-1: 7:00 | company-2: 7:15
     }
     sales-productivity = {
       container_port        = 8086
       stored_procedure_name = "staging.sp_etl_load_sales_productivity"
       endpoint_path         = "/api/v1/sales-productivity/execution"
+      schedule_order        = 5  # company-1: 7:30 | company-2: 7:45
     }
     trip-finances = {
       container_port        = 8087
       stored_procedure_name = "staging.sp_process_trip_finances"
       endpoint_path         = "/api/v1/trip-finances/execution"
+      schedule_order        = 6  # company-1: 8:00 | company-2: 8:15
     }
   }
 }

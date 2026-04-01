@@ -6,6 +6,19 @@
 #
 # Autenticación: OIDC token de scraper-sa — Cloud Run valida automáticamente.
 
+# Calcula el cron para cada job a partir de schedule_order:
+#   company-1: 5:00 + (order * 30 min)
+#   company-2: 5:00 + (order * 30 + 15 min)
+#
+# Resultado (America/Bogota):
+#   accounting-fuel-savings  → c1: 5:00  c2: 5:15
+#   accounting-invoice       → c1: 5:30  c2: 5:45
+#   aircraft-discrepancies   → c1: 6:00  c2: 6:15
+#   aircraft-logged-flights  → c1: 6:30  c2: 6:45
+#   aircraft-utilization     → c1: 7:00  c2: 7:15
+#   sales-productivity       → c1: 7:30  c2: 7:45
+#   trip-finances            → c1: 8:00  c2: 8:15
+
 locals {
   scraper_scheduler_jobs = merge([
     for svc_name, svc in var.scraper_services : {
@@ -13,11 +26,13 @@ locals {
         service    = svc_name
         company_id = "1"
         endpoint   = svc.endpoint_path
+        cron       = "${(5 * 60 + svc.schedule_order * 30) % 60} ${floor((5 * 60 + svc.schedule_order * 30) / 60)} * * *"
       }
       "${svc_name}-company-2" = {
         service    = svc_name
         company_id = "2"
         endpoint   = svc.endpoint_path
+        cron       = "${(5 * 60 + svc.schedule_order * 30 + 15) % 60} ${floor((5 * 60 + svc.schedule_order * 30 + 15) / 60)} * * *"
       }
     }
   ]...)
@@ -27,7 +42,7 @@ resource "google_cloud_scheduler_job" "scraper" {
   for_each = local.scraper_scheduler_jobs
 
   name      = each.key
-  schedule  = var.scraper_scheduler_cron
+  schedule  = each.value.cron
   time_zone = var.scheduler_timezone
   project   = var.project_id
   region    = var.region
