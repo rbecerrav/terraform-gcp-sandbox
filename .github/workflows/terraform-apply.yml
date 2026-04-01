@@ -55,12 +55,12 @@ jobs:
             if (prs.data.length === 0) return;
             const outcome = '${{ steps.apply.outcome }}';
             const status = outcome === 'success' ? '✅' : '❌';
-            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
             const sha = context.sha.substring(0, 7);
-            const body = `#### Terraform Apply ${status}
-**Run:** [#${{ github.run_number }}](${runUrl})
-**Commit:** \`${sha}\` pushed by @${{ github.actor }}
-**Status:** ${outcome}`;
+            const body = '#### Terraform Apply ' + status + '\n' +
+              '**Run:** [#${{ github.run_number }}](' + runUrl + ')\n' +
+              '**Commit:** `' + sha + '` pushed by @${{ github.actor }}\n' +
+              '**Status:** ' + outcome;
             await github.rest.issues.createComment({
               issue_number: prs.data[0].number,
               owner: context.repo.owner,
