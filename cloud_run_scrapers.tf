@@ -6,7 +6,7 @@
 #   - cpu_idle: true  (solo necesitan CPU durante la ejecución del ETL)
 #
 # Dependen de session-service-api para obtener tokens de sesión.
-# Cloud SQL Auth Proxy via annotation cloudsql-instances.
+# Cloud SQL Auth Proxy via volumen explícito (Cloud Run v2 nativo, evita drift de anotación).
 
 resource "google_cloud_run_v2_service" "scraper" {
   for_each = var.scraper_services
@@ -21,10 +21,6 @@ resource "google_cloud_run_v2_service" "scraper" {
     scaling {
       min_instance_count = 0
       max_instance_count = 1
-    }
-
-    annotations = {
-      "run.googleapis.com/cloudsql-instances" = google_sql_database_instance.pipeline.connection_name
     }
 
     containers {
@@ -63,6 +59,11 @@ resource "google_cloud_run_v2_service" "scraper" {
       env {
         name  = "SESSION_BASE_URL"
         value = google_cloud_run_v2_service.session_service.uri
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
       }
 
       env {
@@ -113,6 +114,13 @@ resource "google_cloud_run_v2_service" "scraper" {
             version = "latest"
           }
         }
+      }
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.pipeline.connection_name]
       }
     }
   }

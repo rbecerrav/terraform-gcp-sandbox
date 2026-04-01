@@ -6,7 +6,7 @@
 #   - cpu_throttling: false  (evitar timeouts durante captcha)
 #
 # max_instance_count: 1 — un solo browser real en ejecución a la vez.
-# Cloud SQL Auth Proxy se inyecta automáticamente via annotation cloudsql-instances.
+# Cloud SQL Auth Proxy via volumen explícito (Cloud Run v2 nativo, evita drift de anotación).
 
 resource "google_cloud_run_v2_service" "session_service" {
   name     = "session-service-api"
@@ -19,10 +19,6 @@ resource "google_cloud_run_v2_service" "session_service" {
     scaling {
       min_instance_count = 0
       max_instance_count = 1
-    }
-
-    annotations = {
-      "run.googleapis.com/cloudsql-instances" = google_sql_database_instance.pipeline.connection_name
     }
 
     containers {
@@ -73,9 +69,14 @@ resource "google_cloud_run_v2_service" "session_service" {
         value = var.recaptcha_site_key
       }
 
-      # Cloud SQL Auth Proxy expone la BD via Unix socket (annotation-based).
+      # Cloud SQL Auth Proxy expone la BD via Unix socket montado en /cloudsql.
       # psycopg2 interpreta host que empieza con "/" como directorio del socket.
       # El socket queda en: /cloudsql/<connection_name>/.s.PGSQL.5432
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
       env {
         name  = "DB_HOST"
         value = "/cloudsql/${google_sql_database_instance.pipeline.connection_name}"
@@ -138,6 +139,13 @@ resource "google_cloud_run_v2_service" "session_service" {
             version = "latest"
           }
         }
+      }
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.pipeline.connection_name]
       }
     }
   }
