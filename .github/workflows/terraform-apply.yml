@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  pull-requests: write  # Required to post apply result as PR comment
 
 jobs:
   apply:
@@ -35,7 +36,36 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
+        id: apply
+        continue-on-error: true
         run: |
           terraform apply -auto-approve \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="session_service_image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docker-images/session-service-api:latest"
+
+      - name: Post Apply to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha
+            });
+            if (prs.data.length === 0) return;
+            const status = '${{ steps.apply.outcome }}' === 'success' ? '✅' : '❌';
+            const output = `#### Terraform Apply ${status}
+            \`\`\`
+            ${{ steps.apply.outputs.stdout }}
+            \`\`\`
+            *Triggered by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            await github.rest.issues.createComment({
+              issue_number: prs.data[0].number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Apply Status
+        if: steps.apply.outcome == 'failure'
+        run: exit 1
