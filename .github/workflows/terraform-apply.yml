@@ -39,7 +39,7 @@ jobs:
         id: apply
         continue-on-error: true
         run: |
-          terraform apply -auto-approve \
+          terraform apply -auto-approve -no-color \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="session_service_image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docker-images/session-service-api:latest"
 
@@ -53,17 +53,19 @@ jobs:
               commit_sha: context.sha
             });
             if (prs.data.length === 0) return;
-            const status = '${{ steps.apply.outcome }}' === 'success' ? '✅' : '❌';
-            const output = `#### Terraform Apply ${status}
-            \`\`\`
-            ${{ steps.apply.outputs.stdout }}
-            \`\`\`
-            *Triggered by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            const outcome = '${{ steps.apply.outcome }}';
+            const status = outcome === 'success' ? '✅' : '❌';
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const sha = context.sha.substring(0, 7);
+            const body = `#### Terraform Apply ${status}
+**Run:** [#${{ github.run_number }}](${runUrl})
+**Commit:** \`${sha}\` pushed by @${{ github.actor }}
+**Status:** ${outcome}`;
             await github.rest.issues.createComment({
               issue_number: prs.data[0].number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: output
+              body
             });
 
       - name: Apply Status
