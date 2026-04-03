@@ -17,5 +17,5 @@ resource "google_project_service" "apis" {
 
   project            = var.project_id
   service            = each.value
-  disable_on_destroy = true # No deshabilitar la API si se destruye el recurso
+  disable_on_destroy = false # No deshabilitar la API al destruir — evita romper otros servicios del proyecto
 }
