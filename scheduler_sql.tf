@@ -64,6 +64,7 @@ resource "google_cloud_scheduler_job" "cloud_sql_start" {
     google_project_service.apis,
     google_sql_database_instance.pipeline,
     google_project_iam_member.cicd_roles,
+    google_service_account_iam_member.cloudscheduler_act_as_cicd,
   ]
 }
 
@@ -105,5 +106,6 @@ resource "google_cloud_scheduler_job" "cloud_sql_stop" {
     google_project_service.apis,
     google_sql_database_instance.pipeline,
     google_project_iam_member.cicd_roles,
+    google_service_account_iam_member.cloudscheduler_act_as_cicd,
   ]
 }
