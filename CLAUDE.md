@@ -4,80 +4,100 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Terraform repository for GCP sandbox infrastructure that deploys a scraper pipeline for aviation data. Deploys via GitHub Actions using Workload Identity Federation (no stored SA keys). Remote state lives in GCS bucket `tfstate-7ceba286-c3bb-4d79`.
+Terraform repository for GCP infrastructure that deploys a scraper pipeline for aviation data. Two companies are scraped: **JetExcellence** (company-1) and **FlyBelair** (company-2). The pipeline uses Playwright + CapSolver for session-based authentication against the JetInsight portal, then runs 7 ETL scrapers that extract data into Cloud SQL PostgreSQL.
 
-The pipeline scrapes data from two companies (**JetExcellence** = company-1, **FlyBelair** = company-2) via a session-based auth flow using Playwright + CapSolver, and stores results in Cloud SQL PostgreSQL.
+This infrastructure originated as a sandbox and has been hardened for production use through a formal remediation process (see `00_informe.md` for the original audit and `01_plan_remediacion.md` for the implementation plan). All 5 phases of remediation have been implemented.
+
+**Deployment model:** GitOps via GitHub Actions using Workload Identity Federation (no stored SA keys). Remote state lives in GCS bucket `tfstate-7ceba286-c3bb-4d79`.
 
 ## Common Commands
 
 ```bash
-# Local development
 terraform init
 terraform fmt -recursive
 terraform validate
-terraform plan -var="project_id=YOUR_PROJECT_ID"
-terraform apply -var="project_id=YOUR_PROJECT_ID"
-terraform destroy -var="project_id=YOUR_PROJECT_ID"
+terraform plan -var="project_id=YOUR_PROJECT_ID" -var="alert_email=YOUR_EMAIL"
+terraform apply -var="project_id=YOUR_PROJECT_ID" -var="alert_email=YOUR_EMAIL"
 ```
 
-## CI/CD Workflows
-
-| Workflow | Trigger | Action |
-|---|---|---|
-| `terraform-plan.yml` | PR opened / updated | Runs plan, posts output as PR comment |
-| `terraform-apply.yml` | Push to `main` (PR merged) | Runs `terraform apply` |
-| `terraform-destroy.yml` | Manual (`workflow_dispatch`) or scheduled cron | Runs `terraform destroy` |
-
-Destroy requires typing `"destroy"` in the manual trigger confirmation input. To enable scheduled auto-destroy, uncomment the `schedule` block in `terraform-destroy.yml`.
+Note: `image_tags.auto.tfvars` is auto-loaded by Terraform and provides image tags for all services. The `terraform.tfvars` file (gitignored) provides `project_id` locally.
 
 ## Architecture
 
+### File Structure
+
 ```
 .
-├── versions.tf           # Terraform version, GCS backend, provider versions
-├── providers.tf          # google provider (project/region from variables)
-├── variables.tf          # All variables: project, DB, Cloud Run, scheduler, scraper_services map
-├── main.tf               # Index comment only — resources split across files below
-├── apis.tf               # GCP API enablement (17 APIs via for_each)
-├── artifact_registry.tf  # Docker image repository (docker-images)
-├── cloud_sql.tf          # PostgreSQL 17 instance (jetex-pipeline-db, us-east4)
-├── cloud_run.tf          # Cloud Run: session-service-api (Playwright + CapSolver)
-├── cloud_run_scrapers.tf # Cloud Run: 7 scraper services via for_each on scraper_services
-├── scheduler.tf          # Cloud Scheduler: 2 session login jobs (one per company)
-├── scheduler_scrapers.tf # Cloud Scheduler: 14 ETL jobs (7 scrapers × 2 companies, dynamic cron)
-├── secrets.tf            # Secret Manager: DB creds + CapSolver + portal credentials
-├── iam.tf                # Service accounts (scraper-sa, api-sa) and IAM bindings
-├── cicd.tf               # WIF pool/provider + github-actions-cicd SA
-├── outputs.tf            # Outputs: URLs, SA emails, WIF provider name, AR URL
+├── versions.tf             # Terraform >= 1.6, google ~> 5.45, GCS backend
+├── providers.tf            # google provider (project/region from variables)
+├── variables.tf            # All variables: project, DB, Cloud Run, scheduler, scraper_services map
+├── main.tf                 # Index comment only — resources split across files below
+├── apis.tf                 # 13 GCP APIs via for_each (disable_on_destroy = false)
+├── artifact_registry.tf    # Docker repo (docker-images) + cleanup policies
+├── vpc.tf                  # Private Service Access: IP range + VPC peering for Cloud SQL
+├── cloud_sql.tf            # PostgreSQL 17: private IP, REGIONAL HA, SSL enforced
+├── cloud_run.tf            # session-service-api (Playwright + CapSolver, 2Gi/2CPU)
+├── cloud_run_scrapers.tf   # 7 scraper services via for_each (512Mi/1CPU)
+├── scheduler.tf            # 2 session login jobs (company-1 at 4:30, company-2 at 4:35)
+├── scheduler_scrapers.tf   # 14 ETL jobs (7 scrapers x 2 companies, dynamic cron)
+├── scheduler_sql.tf        # Cloud SQL start/stop jobs (cost reduction)
+├── secrets.tf              # Secret Manager: DB creds + CapSolver + portal credentials
+├── iam.tf                  # Service accounts (session-sa, scraper-sa) + IAM bindings
+├── cicd.tf                 # WIF pool/provider + github-actions-cicd SA + 13 project roles
+├── monitoring.tf           # Email alerts: Scheduler failures, 5xx, SQL connections, 403s
+├── outputs.tf              # URLs, SA emails, WIF provider name, AR URL
+├── image_tags.auto.tfvars  # GitOps source of truth for deployed image tags
 ├── scripts/
-│   └── setup-wif.sh      # One-time GCP Workload Identity Federation bootstrap
+│   └── setup-wif.sh        # DEPRECATED — kept as reference only, exits with error
 └── .github/workflows/
-    ├── terraform-plan.yml    # PR check
-    ├── terraform-apply.yml   # Merge to main
-    └── terraform-destroy.yml # Manual / scheduled destroy
+    ├── terraform-plan.yml    # PR check (required status check for merge)
+    ├── terraform-apply.yml   # Merge to main → apply
+    └── terraform-destroy.yml # Manual trigger (requires typing "destroy")
 ```
+
+### Daily Operations Timeline (America/Bogota)
+
+| Time | Event |
+|------|-------|
+| 04:00 AM | Cloud SQL starts (`cloud-sql-start` scheduler) |
+| 04:30 AM | Session login — JetExcellence (company-1) |
+| 04:35 AM | Session login — FlyBelair (company-2) |
+| 05:00 AM | First scrapers start (accounting-fuel-savings) |
+| 05:00 – 08:15 AM | 14 scraper jobs run sequentially (30 min slots, 15 min offset between companies) |
+| 08:15 AM | Last scraper finishes (trip-finances company-2) |
+| 09:30 AM | Cloud SQL stops (`cloud-sql-stop` scheduler) |
+
+Session tokens are valid for 6 hours (`session_expires_at = 6`), covering the full scraper window.
 
 ## Infrastructure Components
 
 ### Cloud SQL
-- Instance: `jetex-pipeline-db`, PostgreSQL 17, region `us-east4`
-- Tier: `db-custom-2-8192`, SSD, ZONAL availability, auto-resize
-- Database: `jetex_pipeline` (schema `staging`)
-- User: `pipeline_writer` (password generated by Terraform, stored in Secret Manager)
-- Connection from Cloud Run: via Cloud SQL Auth Proxy (Unix socket, no VPC Connector needed)
-- `deletion_protection = true` — manual override required before `terraform destroy`
+
+- **Instance:** `jetex-pipeline-db`, PostgreSQL 17, region `us-east4`
+- **Tier:** `db-custom-1-3840` (1 vCPU, 3.75 GB RAM). For production with higher concurrency, use `db-custom-2-8192`.
+- **Availability:** `REGIONAL` (automatic failover to another zone)
+- **Network:** Private IP only (`ipv4_enabled = false`). Connected via Private Service Access (VPC peering with Google services). No public IP exposure.
+- **Connection from Cloud Run:** Cloud SQL Auth Proxy via Unix socket volume mount. `enable_private_path_for_google_cloud_services = true` routes the proxy through Google's internal network — no VPC Connector needed.
+- **SSL:** `ENCRYPTED_ONLY` enforced on all connections
+- **Database:** `jetex_pipeline`, schema `staging`
+- **User:** `pipeline_writer` (password generated by Terraform, stored in Secret Manager and in tfstate)
+- **Cost reduction:** Cloud SQL starts/stops daily via Cloud Scheduler jobs calling the Admin API. `lifecycle { ignore_changes = [activation_policy] }` prevents Terraform from fighting the schedulers.
+- **Deletion protection:** `deletion_protection = true`. Must be disabled manually before `terraform destroy`.
+- **Backup:** PITR enabled, 7-day retention, daily at 04:00 UTC
 
 ### Cloud Run Services
-| Service | File | Resources | Description |
-|---|---|---|---|
-| `session-service-api` | `cloud_run.tf` | 2Gi / 2 CPU | Playwright + CapSolver — handles portal login and session tokens |
-| 7 scraper services | `cloud_run_scrapers.tf` | 512Mi / 1 CPU (default) | ETL scrapers, deployed via `for_each` on `var.scraper_services` |
 
-Scraper images are derived automatically: `us-central1-docker.pkg.dev/<project_id>/docker-images/<service-name>:latest`
+| Service | File | SA | Resources | Description |
+|---------|------|----|-----------|-------------|
+| `session-service-api` | `cloud_run.tf` | `session-sa` | 2Gi / 2 CPU | Playwright + CapSolver — portal login and session tokens |
+| 7 scraper services | `cloud_run_scrapers.tf` | `scraper-sa` | 512Mi / 1 CPU | ETL scrapers via `for_each` on `var.scraper_services` |
+
+All services use `ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"` (no public internet access). Cloud Scheduler, being a GCP internal service, can invoke them via OIDC.
 
 ### Scraper Services (defined in `var.scraper_services`)
+
 | Service | Port | schedule_order | company-1 cron | company-2 cron |
-|---|---|---|---|---|
+|---------|------|----------------|----------------|----------------|
 | accounting-fuel-savings | 8081 | 0 | 5:00 | 5:15 |
 | accounting-invoice | 8082 | 1 | 5:30 | 5:45 |
 | aircraft-discrepancies | 8083 | 2 | 6:00 | 6:15 |
@@ -86,17 +106,39 @@ Scraper images are derived automatically: `us-central1-docker.pkg.dev/<project_i
 | sales-productivity | 8086 | 5 | 7:30 | 7:45 |
 | trip-finances | 8087 | 6 | 8:00 | 8:15 |
 
-All times in `America/Bogota`. Cron is calculated dynamically from `schedule_order`: `5:00 + (order × 30min)` for company-1, `+15min` for company-2.
+Cron is calculated dynamically from `schedule_order`: `5:00 + (order * 30min)` for company-1, `+15min` for company-2.
 
-### Cloud Scheduler
-- **Session login jobs** (`scheduler.tf`): 2 jobs — `session-login-jet-exc` (company-1) and `session-login-fly-belair` (company-2). Run every 5 hours (default). Send secret *names* (not values) to session-service-api.
-- **Scraper ETL jobs** (`scheduler_scrapers.tf`): 14 jobs generated dynamically via `locals` from `var.scraper_services`. OIDC auth via `scraper-sa`.
+### Service Accounts
+
+| SA | Account ID | Purpose | Key Permissions |
+|----|------------|---------|-----------------|
+| `session-sa` | `session-sa` | session-service-api | `cloudsql.client`, Secret Accessor (DB + CapSolver + portal creds), `run.invoker` on session-service |
+| `scraper-sa` | `scraper-sa` | 7 ETL scrapers | `cloudsql.client`, Secret Accessor (DB secrets only), `run.invoker` on scrapers |
+| `github-actions-cicd` | `github-actions-cicd` | CI/CD via GitHub Actions | 13 project-level admin roles (run, scheduler, sql, secrets, AR, IAM, WIF, monitoring, logging, compute, networking, serviceusage) |
+| `cloudsql-manager-sa` | `cloudsql-manager-sa` | Cloud SQL start/stop | `cloudsql.admin` (used by Cloud Scheduler `oauth_token`) |
+
+**Design decision:** `session-sa` and `scraper-sa` are segregated (remediation 2.1). session-service-api needs access to portal credentials and CapSolver; scrapers only need DB secrets. This limits blast radius if a scraper is compromised.
+
+### Cloud Scheduler Jobs
+
+| Job | Schedule | Target | Auth |
+|-----|----------|--------|------|
+| `session-login-jet-exc` | `30 4 * * *` | session-service-api `/api/v1/session/login` | OIDC (`session-sa`) |
+| `session-login-fly-belair` | `35 4 * * *` | session-service-api `/api/v1/session/login` | OIDC (`session-sa`) |
+| 14 scraper jobs | dynamic (see table above) | scraper Cloud Run services | OIDC (`scraper-sa`) |
+| `cloud-sql-start` | `0 4 * * *` | Cloud SQL Admin API (PATCH) | OAuth (`cloudsql-manager-sa`) |
+| `cloud-sql-stop` | `30 9 * * *` | Cloud SQL Admin API (PATCH) | OAuth (`cloudsql-manager-sa`) |
+
+**Design decision:** Session login jobs send secret *names* (not values) in the HTTP body. session-service-api resolves values at runtime via Secret Manager SDK.
+
+**Design decision:** Cloud SQL start/stop uses `oauth_token` (not `oidc_token`) because the Admin API requires OAuth2. A dedicated SA (`cloudsql-manager-sa`) is used to avoid self-impersonation issues with the cicd SA.
 
 ### Secret Manager
-Secrets created by Terraform (value set by Terraform):
-- `db-connection-name`, `db-name`, `db-user`, `db-password`
 
-Secrets created by Terraform but **value must be loaded manually** (never in tfstate):
+**Managed by Terraform (value in tfstate):**
+- `db-name`, `db-user`, `db-password`
+
+**Managed by Terraform, value loaded manually (never in tfstate):**
 - `capsolver-api-key`
 - `jet-exc-email`, `jet-exc-password` (company-1 — JetExcellence)
 - `fly-belair-email`, `fly-belair-password` (company-2 — FlyBelair)
@@ -106,62 +148,196 @@ Secrets created by Terraform but **value must be loaded manually** (never in tfs
 echo -n "<VALUE>" | gcloud secrets versions add <secret-name> --data-file=- --project=<PROJECT_ID>
 ```
 
-### Service Accounts
-| SA | Account ID | Permissions |
-|---|---|---|
-| `scraper-sa` | `scraper-sa` | `cloudsql.client`, Secret Accessor (6 secrets), `run.invoker` on scrapers and session-service |
-| `api-sa` | `api-sa` | `cloudsql.client`, Secret Accessor (DB secrets only) |
-| CI/CD | `github-actions-cicd` | `artifactregistry.writer`, `run.admin`, `cloudscheduler.admin`, `iam.serviceAccountUser` on scraper-sa |
+### VPC and Networking
+
+- Uses the project's `default` VPC network
+- **Private Service Access:** `google_compute_global_address` reserves a /16 internal IP range for VPC peering with Google services
+- **VPC peering:** `google_service_networking_connection` connects the default VPC to `servicenetworking.googleapis.com`
+- Cloud SQL gets a private IP within this peered range
+- Cloud Run reaches Cloud SQL via Auth Proxy over Google's internal network (`enable_private_path_for_google_cloud_services = true`)
 
 ### Artifact Registry
-- Repository: `docker-images` (Docker format, `us-central1`)
-- URL pattern: `us-central1-docker.pkg.dev/<project_id>/docker-images/<image-name>:tag`
+
+- **Repository:** `docker-images` (Docker format, `us-central1`)
+- **URL pattern:** `us-central1-docker.pkg.dev/<project_id>/docker-images/<image-name>:<tag>`
+- **Cleanup policies:** Delete untagged images after 30 days; keep 10 most recent tagged versions
+
+### Monitoring and Alerting
+
+Four alert policies defined in `monitoring.tf`, all notifying via email (`var.alert_email`):
+
+1. **Cloud Scheduler failures** — log-based metric, any failure after retries exhausted
+2. **Cloud Run 5xx rate > 5%** — built-in metric, 5-minute window
+3. **Cloud SQL connections > 80%** — threshold at 160 connections (80% of default max_connections=200)
+4. **Cloud Run 403 auth errors** — log-based metric, more than 5 errors in 10 minutes
+
+## CI/CD and GitHub Integration
+
+### Workflows
+
+| Workflow | Trigger | Action |
+|----------|---------|--------|
+| `terraform-plan.yml` | PR opened/updated | Runs `terraform plan`, posts output as PR comment |
+| `terraform-apply.yml` | Push to `main` (merge) or manual dispatch | Runs `terraform apply -auto-approve` |
+| `terraform-destroy.yml` | Manual dispatch (type `"destroy"`) | Runs `terraform destroy` with deletion_protection warning |
+
+### GitHub Secrets Required
+
+| Secret | Used by | Description |
+|--------|---------|-------------|
+| `WIF_PROVIDER` | All workflows | Workload Identity Provider resource name |
+| `WIF_SERVICE_ACCOUNT` | All workflows | `github-actions-cicd@<project>.iam.gserviceaccount.com` |
+| `GCP_PROJECT_ID` | All workflows | GCP project ID |
+| `ALERT_EMAIL` | plan, apply, destroy | Email for monitoring alerts |
 
 ### Workload Identity Federation
-- Pool: `github-actions-pool`
-- Provider: `github-oidc` (restricted to `var.github_repo`)
-- Default repo: `FraktalSoftware/Fraktal-JetExcellence-Scrappers`
 
-## Repository Setup (one-time)
+- **Pool:** `github-actions-pool`
+- **Provider:** `github-oidc` (OIDC from `https://token.actions.githubusercontent.com`)
+- **Attribute condition:** Allows tokens from two repos:
+  - `FraktalSoftware/Fraktal-JetExcellence-Scrappers` (services repo — build/push images)
+  - `rbecerrav/terraform-gcp-sandbox` (this repo — terraform plan/apply)
+- **No branch restriction on WIF.** Any branch in either repo can authenticate. Access control relies on: private repos + branch protection + required approvals on `main`. If the repos become public or gain untrusted collaborators, restrict `attribute_condition` to `refs/heads/main`.
 
-### 1. Workload Identity Federation (GCP auth for GitHub Actions)
+### Branch Protection on `main`
+
+- Required status check: **Terraform Plan** (must pass before merge)
+- Required approving reviews: **1** (enforced for collaborators)
+- Dismiss stale reviews on new commits
+- Require conversations resolved
+- `enforce_admins: false` — the repo owner can bypass checks (necessary for solo operation without an approver). Collaborators with Write access cannot bypass.
+
+### GitOps Image Deployment Strategy
+
+The repo uses a GitOps pattern for deploying new service versions. The services repo (`FraktalSoftware/Fraktal-JetExcellence-Scrappers`) and this infra repo are decoupled through `image_tags.auto.tfvars`.
+
+**Flow:**
+1. Developer merges code to `main` in the services repo
+2. `_docker-publish.yml` builds and pushes the Docker image tagged with the short commit SHA
+3. The same workflow opens a PR in this infra repo, updating the service's tag in `image_tags.auto.tfvars`
+4. `terraform-plan.yml` runs and posts the plan as a PR comment (shows exactly which Cloud Run service will update)
+5. Human reviews and approves the PR
+6. Merge triggers `terraform-apply.yml`, deploying the new image
+
+**Cross-repo dependencies:**
+- **Secret:** `INFRA_REPO_TOKEN` in the services repo — a `gho_*` OAuth token from `rbecerrav` with `repo` scope, used to create PRs in this repo
+- **Variable:** `INFRA_REPO` in the services repo — set to `rbecerrav/terraform-gcp-sandbox`
+
+**Rollback:**
+- Revert the GitOps PR in GitHub UI, or
+- Edit `image_tags.auto.tfvars` manually with the previous SHA and open an emergency PR
+
+## GitHub Dependencies and Migration Considerations
+
+The following elements tie this repository to GitHub and would need attention during any migration (e.g., to another GitHub org, GitLab, or other platform):
+
+| Dependency | Location | What it does |
+|------------|----------|-------------|
+| WIF `attribute_condition` | `cicd.tf` | Hardcodes both repo names (`FraktalSoftware/...` and `rbecerrav/...`) |
+| WIF `workloadIdentityUser` bindings | `cicd.tf` | Two bindings, one per repo, with hardcoded repo paths |
+| GitHub Actions OIDC issuer | `cicd.tf` | `issuer_uri = "https://token.actions.githubusercontent.com"` |
+| `INFRA_REPO_TOKEN` secret | Services repo | OAuth token from `rbecerrav` — tied to personal account |
+| `INFRA_REPO` variable | Services repo | Points to `rbecerrav/terraform-gcp-sandbox` |
+| Branch protection rules | GitHub API | Required status checks and review requirements |
+| `.github/workflows/*.yml` | This repo | GitHub Actions syntax |
+| `_docker-publish.yml` | Services repo | GitOps job that opens PRs in this repo |
+
+**Migration considerations:**
+- Updating `attribute_condition` and WIF bindings requires the new repo paths. Terraform handles this, but the first apply after migration needs manual WIF bootstrap (see `scripts/setup-wif.sh` comments for reference).
+- The `INFRA_REPO_TOKEN` is a personal OAuth token. In an org migration, replace with a GitHub App token or fine-grained PAT scoped to the new org.
+- All 3 workflow files use `google-github-actions/auth@v2` which is GitHub-specific. Moving to GitLab or other CI requires replacing with equivalent OIDC-to-GCP auth.
+- The `image_tags.auto.tfvars` mechanism is CI-agnostic (it's just a file update + PR). Only the automation around it is GitHub-specific.
+
+## Destroy Strategy
+
+- **Manual on-demand:** Actions → Terraform Destroy → Run workflow → type `destroy`
+- **Scheduled:** Uncomment the `schedule` cron in `terraform-destroy.yml`
+- Cloud SQL has `deletion_protection = true` — must be disabled before destroy:
+  ```bash
+  gcloud sql instances patch jetex-pipeline-db --no-deletion-protection --project=<PROJECT_ID>
+  ```
+- The GCS state bucket is intentionally NOT managed by Terraform — destroying infra does not destroy state
+- If Cloud SQL is stopped (`activationPolicy: NEVER`) when Terraform runs, it will fail to refresh `google_sql_user`. Start the instance first:
+  ```bash
+  gcloud sql instances patch jetex-pipeline-db --activation-policy=ALWAYS --project=<PROJECT_ID>
+  ```
+
+## Key Design Decisions
+
+1. **Cloud Run → Cloud SQL via Auth Proxy (Unix socket):** No VPC Connector needed. `enable_private_path_for_google_cloud_services = true` routes traffic through Google's internal network.
+2. **Private IP only for Cloud SQL:** Eliminates public attack surface. Private Service Access handles the networking.
+3. **Segregated SAs (session-sa / scraper-sa):** Limits blast radius. Scrapers cannot access portal credentials or CapSolver key.
+4. **Cloud SQL stop/start scheduling:** Reduces cost by ~77% (active ~5.5h/day). Dedicated `cloudsql-manager-sa` avoids self-impersonation issues.
+5. **`lifecycle { ignore_changes = [activation_policy] }`:** Prevents Terraform from resetting the Cloud SQL instance to ALWAYS on every apply.
+6. **`disable_on_destroy = false` on APIs:** Prevents Terraform from trying to disable APIs when resources are removed from state, which would fail with 403 if the SA lacks `serviceUsageAdmin`.
+7. **Scraper cron from `schedule_order`:** Adding a new scraper = add entry to `var.scraper_services` with the next `schedule_order`. Cron is computed automatically.
+8. **Portal credentials outside tfstate:** Secret containers created by Terraform, values loaded manually. Only secret *names* are sent in scheduler job bodies.
+9. **GitOps for image tags:** `image_tags.auto.tfvars` is the single source of truth for what version is deployed. Changes flow through PRs with mandatory `terraform plan` review.
+10. **`ingress = INGRESS_TRAFFIC_INTERNAL_ONLY`:** All Cloud Run services reject public internet traffic. Cloud Scheduler (internal GCP service) can still invoke them.
+
+## Remediation History
+
+The infrastructure underwent a formal security audit (`00_informe.md`) that identified 17 findings (4 critical, 6 high, 7 medium). All findings were addressed through a 5-phase remediation plan (`01_plan_remediacion.md`):
+
+| Phase | Status | Summary |
+|-------|--------|---------|
+| Phase 1 — Immediate | Implemented | Deprecated `setup-wif.sh`, internal-only ingress, WIF documentation, unused APIs removed |
+| Phase 2 — IAM segregation | Implemented | Separated `session-sa` from `scraper-sa`, cleaned orphan resources (`api-sa`, `db-connection-name` secret) |
+| Phase 3 — Operations | Implemented | GitOps image versioning, provider pinned to `~> 5.45`, AR cleanup policies, retry `max_retry_duration`, destroy warning |
+| Phase 4 — Architecture | Implemented | Cloud SQL private IP (VPC peering), REGIONAL HA, 4 monitoring alert policies, state bucket IAM verified |
+| Phase 5 — GitOps | Implemented | Cross-repo PR automation, `image_tags.auto.tfvars`, rollback procedures |
+
+### Known Accepted Risks
+
+| Risk | Mitigation | Context |
+|------|------------|---------|
+| DB password in tfstate | GCS bucket has restrictive IAM; bucket is not publicly accessible | Long-term: consider IAM database auth to eliminate password |
+| `cicd` SA has broad project-level roles | Repo is private; only `main` triggers apply; branch protection enforced | For multi-tenant production: implement custom roles with minimal permissions |
+| WIF not restricted to `main` branch | Repo is private; write access is limited | If repo becomes public or gains untrusted collaborators: add `assertion.ref == 'refs/heads/main'` to `attribute_condition` |
+| `enforce_admins: false` on branch protection | Owner is sole operator; collaborators are still restricted | When team grows: enable `enforce_admins` and set `required_approving_review_count` to 0 |
+
+## Repository Setup (one-time, new project)
+
+### 1. Bootstrap Workload Identity Federation
+
+Since Terraform manages WIF resources but needs WIF to authenticate, a manual bootstrap is required for new projects. See `scripts/setup-wif.sh` comments for the step-by-step procedure. Summary:
+
+1. Create `github-actions-cicd` SA manually via `gcloud`
+2. Grant temporary `roles/editor` for the first `terraform apply`
+3. Create WIF pool + OIDC provider via `gcloud`
+4. Run `terraform apply` (Terraform imports or recreates WIF resources)
+5. Revoke `roles/editor` — Terraform now manages granular roles
+
+### 2. GitHub Secrets
+
+Add to the infra repo (`Settings → Secrets → Actions`):
+- `WIF_PROVIDER` — from `terraform output workload_identity_provider`
+- `WIF_SERVICE_ACCOUNT` — from `terraform output cicd_sa_email`
+- `GCP_PROJECT_ID` — your GCP project ID
+- `ALERT_EMAIL` — email for monitoring notifications
+
+### 3. GitOps Cross-Repo Secrets (services repo)
+
+Add to `FraktalSoftware/Fraktal-JetExcellence-Scrappers`:
+- **Secret** `INFRA_REPO_TOKEN` — OAuth token with `repo` scope
+- **Variable** `INFRA_REPO` — `rbecerrav/terraform-gcp-sandbox` (or new repo path after migration)
+
+### 4. Load Sensitive Secrets
 
 ```bash
-export PROJECT_ID="your-gcp-project-id"
-export GITHUB_REPO="FraktalSoftware/Fraktal-JetExcellence-Scrappers"
-bash scripts/setup-wif.sh
+echo -n "<VALUE>" | gcloud secrets versions add capsolver-api-key --data-file=- --project=<PROJECT_ID>
+echo -n "<VALUE>" | gcloud secrets versions add jet-exc-email --data-file=- --project=<PROJECT_ID>
+echo -n "<VALUE>" | gcloud secrets versions add jet-exc-password --data-file=- --project=<PROJECT_ID>
+echo -n "<VALUE>" | gcloud secrets versions add fly-belair-email --data-file=- --project=<PROJECT_ID>
+echo -n "<VALUE>" | gcloud secrets versions add fly-belair-password --data-file=- --project=<PROJECT_ID>
 ```
 
-The script outputs 3 values — add them as **GitHub Actions secrets**:
-- `WIF_PROVIDER`
-- `WIF_SERVICE_ACCOUNT`
-- `GCP_PROJECT_ID`
+### 5. Branch Protection
 
-### 2. GitHub Branch Protection (enforce PR reviews)
-
-In GitHub → repo Settings → Branches → Add rule for `main`:
+GitHub → repo Settings → Branches → Add rule for `main`:
 - [x] Require a pull request before merging
 - [x] Require approvals: **1**
 - [x] Dismiss stale reviews when new commits are pushed
 - [x] Require status checks to pass: `Terraform Plan`
 - [x] Require branches to be up to date before merging
-- [x] Do not allow bypassing the above settings
-
-### 3. Add Collaborator
-
-GitHub → Settings → Collaborators → Add people → set role to **Write**.
-They can push branches and open PRs but cannot merge without your approval.
-
-## Destroy Strategy
-
-- **Manual on-demand**: Go to Actions → Terraform Destroy → Run workflow → type `destroy`
-- **Scheduled**: Uncomment the `schedule` cron in `terraform-destroy.yml` (e.g. every Friday night)
-- The GCS state bucket is intentionally NOT destroyed — recreating it is manual overhead
-- Cloud SQL has `deletion_protection = true` — must be set to `false` before destroy
-
-## Key Design Decisions
-
-- **Cloud Run → Cloud SQL**: Auth Proxy via annotation `run.googleapis.com/cloudsql-instances` (Unix socket). No VPC Connector needed.
-- **Scraper cron scheduling**: `schedule_order` in `var.scraper_services` drives the time slot. Adding a new scraper = increment max order.
-- **Portal credentials in Scheduler body**: Only secret *names* are sent in the HTTP body — values are resolved at runtime by `session-service-api` via Secret Manager SDK.
-- **`session-service-api` resources**: `cpu_idle = false` + 2 CPU/2Gi — Playwright/Chromium + CapSolver require sustained CPU.
+- [x] Require conversation resolution
