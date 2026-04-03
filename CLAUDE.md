@@ -341,3 +341,58 @@ GitHub → repo Settings → Branches → Add rule for `main`:
 - [x] Require status checks to pass: `Terraform Plan`
 - [x] Require branches to be up to date before merging
 - [x] Require conversation resolution
+
+## Pendientes para Producción
+
+### GitHub App para GitOps (reemplazar INFRA_REPO_TOKEN)
+
+**Prioridad:** Alta — requerido antes del deploy a producción.
+
+**Problema actual:** El job `gitops-update-infra` en `_docker-publish.yml` (repo de servicios) usa `secrets.INFRA_REPO_TOKEN`, un PAT personal (`gho_*`) de `rbecerrav`. Este token:
+- Puede expirar
+- Está atado a la cuenta personal — si el usuario pierde acceso, el flujo se rompe
+- No es adecuado para un entorno de producción compartido
+
+**Solución:** Crear un GitHub App dedicado (`gitops-infra-bot`) que genere tokens de corta duración automáticamente.
+
+**Pasos de implementación:**
+
+1. **Crear el GitHub App** (GitHub → Settings → Developer settings → GitHub Apps → New):
+   - Permissions: `Contents: Read & write`, `Pull requests: Read & write`
+   - Webhook: desactivado
+   - Anotar el **App ID** generado
+   - Generar y descargar el **Private key** (`.pem`)
+
+2. **Instalar el App en ambos repos:**
+   - `FraktalSoftware/Fraktal-JetExcellence-Scrappers`
+   - `rbecerrav/terraform-gcp-sandbox`
+
+3. **Guardar credenciales en el repo de servicios:**
+   ```bash
+   gh variable set GITOPS_APP_ID --repo FraktalSoftware/Fraktal-JetExcellence-Scrappers --body "<APP_ID>"
+   gh secret set GITOPS_APP_PRIVATE_KEY --repo FraktalSoftware/Fraktal-JetExcellence-Scrappers < ruta/al/archivo.pem
+   ```
+
+4. **Actualizar `_docker-publish.yml`** — reemplazar el step de checkout en `gitops-update-infra`:
+   ```yaml
+   - name: Generate GitHub App token
+     id: app-token
+     uses: actions/create-github-app-token@v1
+     with:
+       app-id: ${{ vars.GITOPS_APP_ID }}
+       private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
+       repositories: terraform-gcp-sandbox
+
+   - name: Checkout infra repo
+     uses: actions/checkout@v4
+     with:
+       repository: ${{ vars.INFRA_REPO }}
+       token: ${{ steps.app-token.outputs.token }}
+   ```
+   También actualizar el env `GH_TOKEN` en el step de `gh pr create`:
+   ```yaml
+   env:
+     GH_TOKEN: ${{ steps.app-token.outputs.token }}
+   ```
+
+5. **Eliminar el secret `INFRA_REPO_TOKEN`** del repo de servicios una vez validado el flujo con el App.
