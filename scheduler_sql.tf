@@ -10,7 +10,7 @@ data "google_project" "project" {
 # Cloud Scheduler service agent necesita actAs sobre el cicd SA para usar oauth_token
 resource "google_service_account_iam_member" "cloudscheduler_act_as_cicd" {
   service_account_id = google_service_account.cicd.name
-  role               = "roles/iam.serviceAccountTokenCreator"
+  role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
 }
 # Enciende Cloud SQL a las 4:00 AM (1h antes del primer scraper) y la apaga
