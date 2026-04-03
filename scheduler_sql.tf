@@ -1,6 +1,18 @@
 # =============================================================================
 # Cloud Scheduler — Cloud SQL start / stop (cost reduction)
 # =============================================================================
+
+# Necesario para obtener el project number del agente de servicio de Cloud Scheduler
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+# Cloud Scheduler service agent necesita actAs sobre el cicd SA para usar oauth_token
+resource "google_service_account_iam_member" "cloudscheduler_act_as_cicd" {
+  service_account_id = google_service_account.cicd.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
 # Enciende Cloud SQL a las 4:00 AM (1h antes del primer scraper) y la apaga
 # a las 9:30 AM (15 min después del último scraper a las 8:15 AM).
 #
