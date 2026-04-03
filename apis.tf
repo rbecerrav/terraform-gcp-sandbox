@@ -11,8 +11,8 @@ resource "google_project_service" "apis" {
     "logging.googleapis.com",              # Cloud Logging
     "cloudscheduler.googleapis.com",       # Cloud Scheduler
     "sts.googleapis.com",                  # Security Token Service — requerido por Workload Identity Federation
-    "compute.googleapis.com",             # VPC networking — requerido para Private Service Access de Cloud SQL
-    "servicenetworking.googleapis.com",   # Private Service Access — peering entre VPC y servicios de Google
+    "compute.googleapis.com",              # VPC networking — requerido para Private Service Access de Cloud SQL
+    "servicenetworking.googleapis.com",    # Private Service Access — peering entre VPC y servicios de Google
   ])
 
   project            = var.project_id

@@ -92,14 +92,12 @@ resource "google_iam_workload_identity_pool_provider" "github_oidc" {
     "attribute.ref"        = "assertion.ref"
   }
 
-  # Solo acepta tokens del repo configurado en var.github_repo.
-  # Nota de seguridad: esta condicion permite cualquier branch del repo.
-  # terraform-plan.yml (PRs) necesita acceso GCP desde branches no-main.
-  # terraform-apply.yml solo se ejecuta en push a main (protegido por GitHub branch rules).
-  # Para repos publicos o con colaboradores externos, considerar restringir a:
-  #   "assertion.repository == '...' && assertion.ref == 'refs/heads/main'"
-  #   y crear un SA de solo lectura separado para plan en PRs.
-  attribute_condition = "assertion.repository == '${var.github_repo}'"
+  # Acepta tokens de dos repos:
+  #   1. var.github_repo (Fraktal-JetExcellence-Scrappers) — build y push de imágenes
+  #   2. terraform-gcp-sandbox (este repo) — terraform plan/apply desde GitHub Actions
+  # Nota: cualquier branch de ambos repos puede autenticarse.
+  # El control de qué se despliega lo da la branch protection de main en cada repo.
+  attribute_condition = "assertion.repository == '${var.github_repo}' || assertion.repository == 'rbecerrav/terraform-gcp-sandbox'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -107,10 +105,17 @@ resource "google_iam_workload_identity_pool_provider" "github_oidc" {
 }
 
 # --- IAM: permitir al pool impersonar el SA de CI/CD ---
-# Cualquier workflow del repo configurado puede obtener un token efímero del SA
 
+# Repo de servicios (build + push de imágenes, GitOps dispatch)
 resource "google_service_account_iam_member" "cicd_workload_identity_user" {
   service_account_id = google_service_account.cicd.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repo}"
+}
+
+# Repo de infra (terraform plan/apply desde GitHub Actions)
+resource "google_service_account_iam_member" "cicd_workload_identity_user_infra" {
+  service_account_id = google_service_account.cicd.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/rbecerrav/terraform-gcp-sandbox"
 }
