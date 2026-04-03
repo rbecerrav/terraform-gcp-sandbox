@@ -56,6 +56,12 @@ resource "google_service_account_iam_member" "cicd_act_as_scraper" {
   member             = "serviceAccount:${google_service_account.cicd.email}"
 }
 
+resource "google_service_account_iam_member" "cicd_act_as_session" {
+  service_account_id = google_service_account.session.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.cicd.email}"
+}
+
 # --- Workload Identity Pool ---
 # Contenedor lógico de proveedores de identidad externos (en este caso GitHub)
 
@@ -86,7 +92,13 @@ resource "google_iam_workload_identity_pool_provider" "github_oidc" {
     "attribute.ref"        = "assertion.ref"
   }
 
-  # Solo acepta tokens del repo configurado en var.github_repo
+  # Solo acepta tokens del repo configurado en var.github_repo.
+  # Nota de seguridad: esta condicion permite cualquier branch del repo.
+  # terraform-plan.yml (PRs) necesita acceso GCP desde branches no-main.
+  # terraform-apply.yml solo se ejecuta en push a main (protegido por GitHub branch rules).
+  # Para repos publicos o con colaboradores externos, considerar restringir a:
+  #   "assertion.repository == '...' && assertion.ref == 'refs/heads/main'"
+  #   y crear un SA de solo lectura separado para plan en PRs.
   attribute_condition = "assertion.repository == '${var.github_repo}'"
 
   oidc {

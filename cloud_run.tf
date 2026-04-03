@@ -12,9 +12,10 @@ resource "google_cloud_run_v2_service" "session_service" {
   name     = "session-service-api"
   location = var.region
   project  = var.project_id
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
   template {
-    service_account = google_service_account.scraper.email
+    service_account = google_service_account.session.email
 
     scaling {
       min_instance_count = 0
@@ -22,7 +23,7 @@ resource "google_cloud_run_v2_service" "session_service" {
     }
 
     containers {
-      image = var.session_service_image
+      image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/session-service-api:${lookup(var.image_tags, "session-service-api", "latest")}"
 
       ports {
         container_port = 8080
@@ -152,9 +153,13 @@ resource "google_cloud_run_v2_service" "session_service" {
 
   depends_on = [
     google_project_service.apis,
-    google_secret_manager_secret_iam_member.scraper_db_name,
-    google_secret_manager_secret_iam_member.scraper_db_user,
-    google_secret_manager_secret_iam_member.scraper_db_password,
-    google_secret_manager_secret_iam_member.scraper_capsolver_api_key,
+    google_secret_manager_secret_iam_member.session_db_name,
+    google_secret_manager_secret_iam_member.session_db_user,
+    google_secret_manager_secret_iam_member.session_db_password,
+    google_secret_manager_secret_iam_member.session_capsolver_api_key,
+    google_secret_manager_secret_iam_member.session_jet_exc_email,
+    google_secret_manager_secret_iam_member.session_jet_exc_password,
+    google_secret_manager_secret_iam_member.session_fly_belair_email,
+    google_secret_manager_secret_iam_member.session_fly_belair_password,
   ]
 }

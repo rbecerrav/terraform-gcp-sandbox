@@ -72,6 +72,7 @@ resource "google_cloud_scheduler_job" "scraper" {
     min_backoff_duration = "120s"
     max_backoff_duration = "400s"
     max_doublings        = 3
+    max_retry_duration   = "1500s" # 25 minutos — slot de 30min menos margen
   }
 
   depends_on = [

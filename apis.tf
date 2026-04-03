@@ -1,22 +1,18 @@
 resource "google_project_service" "apis" {
   for_each = toset([
-    "compute.googleapis.com",              # VMs, redes, discos
-    "storage.googleapis.com",              # Cloud Storage buckets
+    "storage.googleapis.com",              # Cloud Storage buckets (tfstate)
     "iam.googleapis.com",                  # IAM roles y service accounts
     "iamcredentials.googleapis.com",       # Workload Identity Federation
     "cloudresourcemanager.googleapis.com", # Gestión del proyecto
     "run.googleapis.com",                  # Cloud Run
-    "cloudfunctions.googleapis.com",       # Cloud Functions
     "sqladmin.googleapis.com",             # Cloud SQL
-    "container.googleapis.com",            # GKE
-    "dns.googleapis.com",                  # Cloud DNS
     "secretmanager.googleapis.com",        # Secret Manager
     "monitoring.googleapis.com",           # Cloud Monitoring
     "logging.googleapis.com",              # Cloud Logging
-    "servicenetworking.googleapis.com",    # Private Service Access (Cloud SQL private IP)
-    "vpcaccess.googleapis.com",            # Serverless VPC Access (Cloud Run -> VPC)
     "cloudscheduler.googleapis.com",       # Cloud Scheduler
     "sts.googleapis.com",                  # Security Token Service — requerido por Workload Identity Federation
+    "compute.googleapis.com",             # VPC networking — requerido para Private Service Access de Cloud SQL
+    "servicenetworking.googleapis.com",   # Private Service Access — peering entre VPC y servicios de Google
   ])
 
   project            = var.project_id
