@@ -66,6 +66,12 @@ resource "google_sql_database_instance" "pipeline" {
     }
   }
 
+  # activation_policy es gestionado por los schedulers cloud-sql-start/stop.
+  # Sin esto, terraform apply después de un stop resetearía la instancia a ALWAYS.
+  lifecycle {
+    ignore_changes = [settings[0].activation_policy]
+  }
+
   depends_on = [
     google_project_service.apis,
     google_service_networking_connection.private_vpc_connection,
