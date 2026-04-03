@@ -38,6 +38,7 @@ locals {
     "roles/logging.admin",                   # Log-based metrics
     "roles/compute.networkAdmin",            # VPC networks + global addresses
     "roles/servicenetworking.networksAdmin", # Private Service Access connections
+    "roles/serviceusage.serviceUsageAdmin",  # Habilitar/deshabilitar GCP APIs
   ]
 }
 
