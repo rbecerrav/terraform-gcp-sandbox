@@ -11,10 +11,10 @@ permissions:
   id-token: write
   pull-requests: write  # Required to post apply result as PR comment
 
-# Solo un apply puede correr a la vez — los siguientes se encolan (no se cancelan).
-# Evita conflictos de tfstate lock cuando múltiples PRs de GitOps se mergean seguidos.
+# Grupo compartido con terraform-plan.yml — serializa plan y apply globalmente.
+# Evita conflictos de tfstate lock cuando múltiples PRs están abiertos en paralelo.
 concurrency:
-  group: terraform-apply
+  group: terraform
   cancel-in-progress: false
 
 jobs:
