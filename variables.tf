@@ -20,7 +20,7 @@ variable "db_region" {
 variable "db_tier" {
   description = "Cloud SQL machine tier"
   type        = string
-  default     = "db-custom-2-8192"
+  default     = "db-custom-1-3840" # para prod db-custom-2-8192
 }
 
 variable "db_disk_size" {
@@ -125,9 +125,15 @@ variable "scheduler_timezone" {
 }
 
 variable "scheduler_login_cron" {
-  description = "Cron schedule for session login jobs (default: every 5 hours)"
+  description = "Cron for company-1 session login (JetExcellence). 4:30 AM Bogota — 30 min before first scraper."
   type        = string
-  default     = "0 */5 * * *"
+  default     = "30 4 * * *"
+}
+
+variable "scheduler_login_cron_company2" {
+  description = "Cron for company-2 session login (FlyBelair). 4:35 AM Bogota — 5 min after company-1 to avoid simultaneous logins."
+  type        = string
+  default     = "35 4 * * *"
 }
 
 variable "scraper_scheduler_cron" {

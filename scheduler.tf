@@ -51,7 +51,7 @@ resource "google_cloud_scheduler_job" "session_login_jet_exc" {
 
 resource "google_cloud_scheduler_job" "session_login_fly_belair" {
   name      = "session-login-fly-belair"
-  schedule  = var.scheduler_login_cron
+  schedule  = var.scheduler_login_cron_company2
   time_zone = var.scheduler_timezone
   project   = var.project_id
   region    = var.region
