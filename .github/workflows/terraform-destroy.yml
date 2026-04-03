@@ -42,8 +42,13 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Warning about deletion protection
+        run: |
+          echo "::warning::Cloud SQL has deletion_protection=true. Destroy will fail on the DB instance."
+          echo "::warning::To allow full destroy, first run: gcloud sql instances patch jetex-pipeline-db --no-deletion-protection --project=${{ secrets.GCP_PROJECT_ID }}"
+
       - name: Terraform Destroy
         run: |
           terraform destroy -auto-approve \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
-            -var="session_service_image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docker-images/session-service-api:latest"
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}"

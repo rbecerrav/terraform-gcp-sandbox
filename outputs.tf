@@ -6,7 +6,7 @@ output "project_id" {
 # --- Cloud SQL ---
 
 output "db_connection_name" {
-  description = "Cloud SQL connection name — usar en la anotacion run.googleapis.com/cloudsql-instances del servicio Cloud Run"
+  description = "Cloud SQL connection name (formato project:region:instance)"
   value       = google_sql_database_instance.pipeline.connection_name
 }
 
@@ -18,13 +18,13 @@ output "db_instance_name" {
 # --- Service Accounts ---
 
 output "scraper_sa_email" {
-  description = "Email del service account para los scrapers (asignar en Cloud Run)"
+  description = "Email del service account para los scrapers ETL"
   value       = google_service_account.scraper.email
 }
 
-output "api_sa_email" {
-  description = "Email del service account para el API backend (asignar en Cloud Run)"
-  value       = google_service_account.api.email
+output "session_sa_email" {
+  description = "Email del service account para session-service-api"
+  value       = google_service_account.session.email
 }
 
 # --- Cloud Run ---

@@ -41,7 +41,7 @@ jobs:
         run: |
           terraform apply -auto-approve -no-color \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
-            -var="session_service_image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docker-images/session-service-api:latest"
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}"
 
       - name: Post Apply to PR
         uses: actions/github-script@v7

@@ -28,7 +28,7 @@ resource "google_cloud_scheduler_job" "session_login_jet_exc" {
     }))
 
     oidc_token {
-      service_account_email = google_service_account.scraper.email
+      service_account_email = google_service_account.session.email
       audience              = google_cloud_run_v2_service.session_service.uri
     }
   }
@@ -43,7 +43,7 @@ resource "google_cloud_scheduler_job" "session_login_jet_exc" {
   depends_on = [
     google_project_service.apis,
     google_cloud_run_v2_service.session_service,
-    google_cloud_run_v2_service_iam_member.scraper_invoker,
+    google_cloud_run_v2_service_iam_member.session_invoker,
     google_secret_manager_secret.jet_exc_email,
     google_secret_manager_secret.jet_exc_password,
   ]
@@ -71,7 +71,7 @@ resource "google_cloud_scheduler_job" "session_login_fly_belair" {
     }))
 
     oidc_token {
-      service_account_email = google_service_account.scraper.email
+      service_account_email = google_service_account.session.email
       audience              = google_cloud_run_v2_service.session_service.uri
     }
   }
@@ -86,7 +86,7 @@ resource "google_cloud_scheduler_job" "session_login_fly_belair" {
   depends_on = [
     google_project_service.apis,
     google_cloud_run_v2_service.session_service,
-    google_cloud_run_v2_service_iam_member.scraper_invoker,
+    google_cloud_run_v2_service_iam_member.session_invoker,
     google_secret_manager_secret.fly_belair_email,
     google_secret_manager_secret.fly_belair_password,
   ]

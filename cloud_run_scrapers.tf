@@ -14,6 +14,7 @@ resource "google_cloud_run_v2_service" "scraper" {
   name     = each.key
   location = var.region
   project  = var.project_id
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
   template {
     service_account = google_service_account.scraper.email
@@ -25,7 +26,7 @@ resource "google_cloud_run_v2_service" "scraper" {
 
     containers {
       # Imagen derivada automáticamente: el nombre del servicio (each.key) coincide con el nombre de la imagen en Artifact Registry
-      image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/${each.key}:latest"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/${each.key}:${lookup(var.image_tags, each.key, "latest")}"
 
       ports {
         container_port = each.value.container_port

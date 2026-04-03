@@ -1,24 +1,9 @@
 # --- Secret Manager: Database connection details ---
 #
-# db-connection-name es el valor clave: el scraper lo usa para configurar
-# el Cloud SQL Auth Proxy socket. Formato: project:region:instance
-# Los scrapers leen estos secretos al iniciar via GCP Secret Manager SDK.
-
-resource "google_secret_manager_secret" "db_connection_name" {
-  secret_id = "db-connection-name"
-  project   = var.project_id
-
-  replication {
-    auto {}
-  }
-
-  depends_on = [google_project_service.apis]
-}
-
-resource "google_secret_manager_secret_version" "db_connection_name" {
-  secret      = google_secret_manager_secret.db_connection_name.id
-  secret_data = google_sql_database_instance.pipeline.connection_name
-}
+# Nota: db-connection-name fue eliminado (2C — hallazgo 3.2).
+# Los servicios reciben DB_HOST como env var directa via Cloud Run volume mount.
+# USE_GCP_SECRETS no esta activo; si se activa en el futuro, re-agregar este secreto
+# con IAM bindings para session-sa y scraper-sa.
 
 resource "google_secret_manager_secret" "db_name" {
   secret_id = "db-name"

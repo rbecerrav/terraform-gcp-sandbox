@@ -1,10 +1,14 @@
 # --- Cloud SQL PostgreSQL Instance ---
 #
-# Conexion desde Cloud Run: via Cloud SQL Auth Proxy nativo.
-# El servicio de Cloud Run debe tener la anotacion:
-#   run.googleapis.com/cloudsql-instances = <connection_name>
-# El scraper se conecta al socket Unix: /cloudsql/<connection_name>
-# No se requiere VPC Connector.
+# Conexión desde Cloud Run: via Cloud SQL Auth Proxy nativo (volumen cloud_sql_instance).
+# El socket Unix queda en: /cloudsql/<connection_name>/.s.PGSQL.5432
+#
+# IP privada: enable_private_path_for_google_cloud_services = true permite que el
+# Auth Proxy se conecte a la IP privada a través de la red interna de Google sin
+# necesidad de VPC Connector en Cloud Run.
+#
+# Alta disponibilidad: availability_type = REGIONAL crea una réplica standby en otra zona.
+# En caso de fallo zonal, Cloud SQL promueve la réplica automáticamente (failover ~60s).
 
 resource "google_sql_database_instance" "pipeline" {
   name             = "jetex-pipeline-db"
@@ -17,16 +21,16 @@ resource "google_sql_database_instance" "pipeline" {
   settings {
     tier              = var.db_tier
     edition           = "ENTERPRISE"
-    availability_type = "ZONAL"
+    availability_type = "REGIONAL"
     disk_size         = var.db_disk_size
     disk_type         = "PD_SSD"
     disk_autoresize   = true
 
     ip_configuration {
-      ipv4_enabled = true
-      ssl_mode     = "ENCRYPTED_ONLY"
-      # Sin authorized_networks: ninguna IP puede conectarse directamente.
-      # Solo el Cloud SQL Auth Proxy (via IAM) puede autenticarse.
+      ipv4_enabled                                  = false
+      private_network                               = data.google_compute_network.default.id
+      enable_private_path_for_google_cloud_services = true
+      ssl_mode                                      = "ENCRYPTED_ONLY"
     }
 
     backup_configuration {
@@ -62,7 +66,10 @@ resource "google_sql_database_instance" "pipeline" {
     }
   }
 
-  depends_on = [google_project_service.apis]
+  depends_on = [
+    google_project_service.apis,
+    google_service_networking_connection.private_vpc_connection,
+  ]
 }
 
 # --- Database ---

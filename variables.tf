@@ -43,9 +43,33 @@ variable "db_user" {
 
 # --- Cloud Run ---
 
-variable "session_service_image" {
-  description = "Docker image for session-service-api (e.g. us-central1-docker.pkg.dev/project/repo/image:tag)"
+# --- Monitoring ---
+
+variable "alert_email" {
+  description = "Email address for Cloud Monitoring alert notifications (ops/on-call inbox)."
   type        = string
+}
+
+# --- Image tags (GitOps) ---
+#
+# Gestionado automáticamente por el workflow _docker-publish.yml del repo de servicios.
+# Cada merge a main en el repo de servicios abre un PR aquí actualizando el tag del servicio afectado.
+# No modificar manualmente — los cambios serán sobreescritos por el workflow.
+# Para desarrollo local, terraform usa el default "latest" definido en cada key.
+
+variable "image_tags" {
+  description = "Docker image tag por servicio. Actualizado automáticamente via GitOps desde Fraktal-JetExcellence-Scrappers."
+  type        = map(string)
+  default = {
+    "accounting-fuel-savings" = "latest"
+    "accounting-invoice"      = "latest"
+    "aircraft-discrepancies"  = "latest"
+    "aircraft-logged-flights" = "latest"
+    "aircraft-utilization"    = "latest"
+    "sales-productivity"      = "latest"
+    "trip-finances"           = "latest"
+    "session-service-api"     = "latest"
+  }
 }
 
 variable "timezone" {
