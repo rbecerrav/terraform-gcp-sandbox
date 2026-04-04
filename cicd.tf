@@ -36,7 +36,8 @@ locals {
     "roles/resourcemanager.projectIamAdmin", # google_project_iam_member resources
     "roles/monitoring.admin",                # Alert policies + notification channels
     "roles/logging.admin",                   # Log-based metrics
-    "roles/compute.networkAdmin",            # VPC networks + global addresses
+    "roles/compute.networkAdmin",            # VPC networks + global addresses + firewalls
+    "roles/compute.instanceAdmin.v1",        # Compute Engine instances (bastion VM)
     "roles/servicenetworking.networksAdmin", # Private Service Access connections
     "roles/serviceusage.serviceUsageAdmin",  # Habilitar/deshabilitar GCP APIs
   ]
@@ -69,6 +70,12 @@ resource "google_service_account_iam_member" "cicd_act_as_scraper" {
 
 resource "google_service_account_iam_member" "cicd_act_as_session" {
   service_account_id = google_service_account.session.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.cicd.email}"
+}
+
+resource "google_service_account_iam_member" "cicd_act_as_bastion" {
+  service_account_id = google_service_account.bastion.name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.cicd.email}"
 }

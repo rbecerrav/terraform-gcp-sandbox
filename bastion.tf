@@ -84,5 +84,6 @@ resource "google_compute_instance" "bastion" {
   depends_on = [
     google_project_service.apis,
     google_project_iam_member.bastion_cloudsql,
+    google_project_iam_member.cicd_roles,
   ]
 }
