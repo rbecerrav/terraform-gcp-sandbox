@@ -14,5 +14,5 @@ image_tags = {
   "aircraft-utilization"    = "b9918ad"
   "sales-productivity"      = "latest"
   "trip-finances"           = "latest"
-  "session-service-api"     = "latest"
+  "session-service-api"     = "b9918ad"
 }
