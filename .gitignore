@@ -16,7 +16,7 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 # image_tags.auto.tfvars es gestionado por GitOps y debe estar en el repo
-!image_tags.auto.tfvars
+!*.auto.tfvars
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
