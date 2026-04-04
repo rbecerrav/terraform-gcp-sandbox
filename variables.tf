@@ -52,24 +52,56 @@ variable "alert_email" {
 
 # --- Image tags (GitOps) ---
 #
-# Gestionado automáticamente por el workflow _docker-publish.yml del repo de servicios.
-# Cada merge a main en el repo de servicios abre un PR aquí actualizando el tag del servicio afectado.
-# No modificar manualmente — los cambios serán sobreescritos por el workflow.
-# Para desarrollo local, terraform usa el default "latest" definido en cada key.
+# Una variable por servicio — cada una vive en su propio *.auto.tfvars.
+# El workflow _docker-publish.yml actualiza solo el archivo del servicio desplegado.
+# Sin conflictos de merge: cada PR de GitOps toca un único archivo independiente.
 
-variable "image_tags" {
-  description = "Docker image tag por servicio. Actualizado automáticamente via GitOps desde Fraktal-JetExcellence-Scrappers."
-  type        = map(string)
-  default = {
-    "accounting-fuel-savings" = "latest"
-    "accounting-invoice"      = "latest"
-    "aircraft-discrepancies"  = "latest"
-    "aircraft-logged-flights" = "latest"
-    "aircraft-utilization"    = "latest"
-    "sales-productivity"      = "latest"
-    "trip-finances"           = "latest"
-    "session-service-api"     = "latest"
-  }
+variable "image_tag_accounting_fuel_savings" {
+  description = "Image tag para accounting-fuel-savings. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
+}
+
+variable "image_tag_accounting_invoice" {
+  description = "Image tag para accounting-invoice. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
+}
+
+variable "image_tag_aircraft_discrepancies" {
+  description = "Image tag para aircraft-discrepancies. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
+}
+
+variable "image_tag_aircraft_logged_flights" {
+  description = "Image tag para aircraft-logged-flights. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
+}
+
+variable "image_tag_aircraft_utilization" {
+  description = "Image tag para aircraft-utilization. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
+}
+
+variable "image_tag_sales_productivity" {
+  description = "Image tag para sales-productivity. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
+}
+
+variable "image_tag_trip_finances" {
+  description = "Image tag para trip-finances. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
+}
+
+variable "image_tag_session_service_api" {
+  description = "Image tag para session-service-api. Actualizado por GitOps."
+  type        = string
+  default     = "latest"
 }
 
 variable "timezone" {

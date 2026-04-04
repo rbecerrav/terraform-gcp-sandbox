@@ -23,7 +23,7 @@ resource "google_cloud_run_v2_service" "session_service" {
     }
 
     containers {
-      image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/session-service-api:${lookup(var.image_tags, "session-service-api", "latest")}"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/session-service-api:${local.image_tags["session-service-api"]}"
 
       ports {
         container_port = 8080
