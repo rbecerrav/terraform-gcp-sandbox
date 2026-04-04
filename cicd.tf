@@ -36,8 +36,9 @@ locals {
     "roles/resourcemanager.projectIamAdmin", # google_project_iam_member resources
     "roles/monitoring.admin",                # Alert policies + notification channels
     "roles/logging.admin",                   # Log-based metrics
-    "roles/compute.networkAdmin",            # VPC networks + global addresses + firewalls
+    "roles/compute.networkAdmin",            # VPC networks + global addresses
     "roles/compute.instanceAdmin.v1",        # Compute Engine instances (bastion VM)
+    "roles/compute.securityAdmin",           # Firewall rules (bastion IAP rule)
     "roles/servicenetworking.networksAdmin", # Private Service Access connections
     "roles/serviceusage.serviceUsageAdmin",  # Habilitar/deshabilitar GCP APIs
   ]
