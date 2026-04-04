@@ -24,5 +24,8 @@ resource "google_vpc_access_connector" "cloud_run" {
   max_instances = 3
   machine_type  = "f1-micro"
 
-  depends_on = [google_project_service.apis]
+  depends_on = [
+    google_project_service.apis,
+    google_project_iam_member.cicd_roles,
+  ]
 }
