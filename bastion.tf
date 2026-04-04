@@ -39,6 +39,8 @@ resource "google_compute_firewall" "allow_iap_ssh" {
   # Rango de IPs de Google IAP TCP forwarding
   source_ranges = ["35.235.240.0/20"]
   target_tags   = ["bastion"]
+
+  depends_on = [google_project_iam_member.cicd_roles]
 }
 
 resource "google_compute_instance" "bastion" {
