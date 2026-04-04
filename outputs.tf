@@ -59,3 +59,15 @@ output "scraper_service_urls" {
   description = "URLs de los 7 servicios Cloud Run scraper"
   value       = { for name, svc in google_cloud_run_v2_service.scraper : name => svc.uri }
 }
+
+# --- Bastion ---
+
+output "bastion_ssh_tunnel_command" {
+  description = "Comando para abrir el túnel SSH hacia Cloud SQL via IAP (ejecutar en una terminal, dejar abierto)"
+  value       = "gcloud compute ssh sql-bastion --zone=${var.db_region}-b --project=${var.project_id} --tunnel-through-iap -- -L 5432:127.0.0.1:5432 -N"
+}
+
+output "bastion_proxy_command" {
+  description = "Comando para iniciar el Cloud SQL Auth Proxy dentro del bastion (ejecutar en otra terminal)"
+  value       = "gcloud compute ssh sql-bastion --zone=${var.db_region}-b --project=${var.project_id} --tunnel-through-iap --command='cloud-sql-proxy ${google_sql_database_instance.pipeline.connection_name} --port=5432 --private-ip'"
+}

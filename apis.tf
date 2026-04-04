@@ -13,6 +13,7 @@ resource "google_project_service" "apis" {
     "sts.googleapis.com",                  # Security Token Service — requerido por Workload Identity Federation
     "compute.googleapis.com",              # VPC networking — requerido para Private Service Access de Cloud SQL
     "servicenetworking.googleapis.com",    # Private Service Access — peering entre VPC y servicios de Google
+    "iap.googleapis.com",                  # Identity-Aware Proxy — SSH tunneling al bastion sin IP pública
   ])
 
   project            = var.project_id
