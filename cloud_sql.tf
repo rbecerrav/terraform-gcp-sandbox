@@ -69,7 +69,10 @@ resource "google_sql_database_instance" "pipeline" {
   # activation_policy es gestionado por los schedulers cloud-sql-start/stop.
   # Sin esto, terraform apply después de un stop resetearía la instancia a ALWAYS.
   lifecycle {
-    ignore_changes = [settings[0].activation_policy]
+    # activation_policy: gestionado por los schedulers cloud-sql-start/stop.
+    # location_preference: GCP asigna zona automáticamente al crear la instancia;
+    # no está en el config, causaría recreación innecesaria si no se ignora.
+    ignore_changes = [settings[0].activation_policy, settings[0].location_preference]
   }
 
   depends_on = [
