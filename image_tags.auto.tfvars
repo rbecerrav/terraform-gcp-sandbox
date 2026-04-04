@@ -7,12 +7,12 @@
 # Para rollback: editar el tag del servicio afectado y abrir un PR.
 
 image_tags = {
-  "accounting-fuel-savings" = "11f9b8e"
+  "accounting-fuel-savings" = "b9918ad"
   "accounting-invoice"      = "latest"
-  "aircraft-discrepancies"  = "latest"
-  "aircraft-logged-flights" = "b9918ad"
-  "aircraft-utilization"    = "latest"
+  "aircraft-discrepancies"  = "b9918ad"
+  "aircraft-logged-flights" = "11f9b8e"
+  "aircraft-utilization"    = "b9918ad"
   "sales-productivity"      = "latest"
   "trip-finances"           = "latest"
-  "session-service-api"     = "latest"
+  "session-service-api"     = "b9918ad"
 }
