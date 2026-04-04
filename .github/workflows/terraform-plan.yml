@@ -10,13 +10,6 @@ permissions:
   id-token: write       # Required for Workload Identity Federation
   pull-requests: write  # Required to post plan as PR comment
 
-# Grupo compartido con terraform-apply.yml — serializa plan y apply globalmente.
-# Evita conflictos de tfstate lock cuando múltiples PRs están abiertos en paralelo.
-# cancel-in-progress: false encola en lugar de cancelar, para que todos los planes corran.
-concurrency:
-  group: terraform
-  cancel-in-progress: false
-
 jobs:
   plan:
     name: Terraform Plan
@@ -49,7 +42,7 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          terraform plan -no-color \
+          terraform plan -no-color -lock-timeout=10m \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="alert_email=${{ secrets.ALERT_EMAIL }}"
         continue-on-error: true
