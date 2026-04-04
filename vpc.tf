@@ -9,14 +9,6 @@
 # Flujo de conexión:
 #   Cloud Run → Cloud SQL Auth Proxy (via internal Google network) → Cloud SQL (IP privada)
 
-# Red VPC default del proyecto
-data "google_compute_network" "default" {
-  name    = "default"
-  project = var.project_id
-
-  depends_on = [google_project_service.apis]
-}
-
 # Rango de IPs privadas reservado para peering con servicios de Google.
 # Este bloque no crea subnets — solo reserva el rango para el peering.
 resource "google_compute_global_address" "private_ip_range" {
@@ -25,7 +17,7 @@ resource "google_compute_global_address" "private_ip_range" {
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
-  network       = data.google_compute_network.default.id
+  network       = "projects/${var.project_id}/global/networks/default"
 
   depends_on = [google_project_service.apis]
 }
@@ -33,7 +25,7 @@ resource "google_compute_global_address" "private_ip_range" {
 # Conexión de peering entre el VPC default y los servicios de Google.
 # Permite que Cloud SQL tenga una IP privada dentro del rango reservado.
 resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = data.google_compute_network.default.id
+  network                 = "projects/${var.project_id}/global/networks/default"
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
 
