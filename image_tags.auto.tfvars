@@ -13,6 +13,6 @@ image_tags = {
   "aircraft-logged-flights" = "11f9b8e"
   "aircraft-utilization"    = "b9918ad"
   "sales-productivity"      = "latest"
-  "trip-finances"           = "latest"
+  "trip-finances"           = "9e48ea2"
   "session-service-api"     = "b9918ad"
 }
