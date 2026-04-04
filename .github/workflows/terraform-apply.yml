@@ -11,12 +11,6 @@ permissions:
   id-token: write
   pull-requests: write  # Required to post apply result as PR comment
 
-# Un solo apply corre a la vez. cancel-in-progress: false encola el siguiente
-# en lugar de cancelarlo — necesario cuando se mergean PRs seguidos.
-concurrency:
-  group: terraform-apply
-  cancel-in-progress: false
-
 jobs:
   apply:
     name: Terraform Apply
@@ -45,7 +39,7 @@ jobs:
         id: apply
         continue-on-error: true
         run: |
-          terraform apply -auto-approve -no-color -lock-timeout=15m \
+          terraform apply -auto-approve -no-color -lock-timeout=30m \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="alert_email=${{ secrets.ALERT_EMAIL }}"
 

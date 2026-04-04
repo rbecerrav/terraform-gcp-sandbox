@@ -1,19 +1,19 @@
 name: GitOps Rebase
 
-# Se dispara cuando un PR de GitOps se mergea a main y actualiza image_tags.auto.tfvars.
+# Se dispara cuando un PR de GitOps se mergea a main y actualiza algún *.auto.tfvars.
 # Hace rebase de todas las branches gitops/* abiertas sobre el nuevo main para evitar
 # conflictos de merge en los PRs restantes.
 #
-# Por qué el rebase funciona sin conflictos: cada branch gitops/* solo modifica
-# una línea diferente del archivo (una por servicio), por lo que git puede
-# aplicar los cambios automáticamente sin intervención manual.
+# Por qué el rebase funciona sin conflictos: cada branch gitops/* modifica únicamente
+# su propio archivo <service>.auto.tfvars — archivos independientes — así que git
+# puede aplicar los cambios automáticamente sin intervención manual.
 
 on:
   push:
     branches:
       - main
     paths:
-      - image_tags.auto.tfvars
+      - '*.auto.tfvars'
 
 permissions:
   contents: write
