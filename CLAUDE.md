@@ -342,6 +342,71 @@ GitHub → repo Settings → Branches → Add rule for `main`:
 - [x] Require branches to be up to date before merging
 - [x] Require conversation resolution
 
+## Acceso Local a Cloud SQL (DBeaver)
+
+Cloud SQL tiene IP privada únicamente (`ipv4_enabled = false`). Para conectarse desde una máquina local se usa un bastion VM (`sql-bastion`) en la misma VPC, accedido via IAP TCP tunneling.
+
+### Prerequisitos (una sola vez)
+
+```bash
+# Autenticarse con gcloud
+gcloud auth login
+gcloud config set project project-7ceba286-c3bb-4d79-905
+```
+
+### Paso 1 — Encender Cloud SQL (si está apagado)
+
+La instancia se apaga automáticamente a las 9:30 AM Bogotá. Si intentas conectarte fuera de la ventana 4:00 AM – 9:30 AM, enciéndela manualmente:
+
+```bash
+gcloud sql instances patch jetex-pipeline-db \
+  --activation-policy=ALWAYS \
+  --project=project-7ceba286-c3bb-4d79-905
+```
+
+Espera ~1 minuto a que el estado sea `RUNNABLE`.
+
+### Paso 2 — Abrir el túnel SSH (Terminal 1, dejar abierta)
+
+```bash
+gcloud compute ssh sql-bastion \
+  --zone=us-east4-b \
+  --project=project-7ceba286-c3bb-4d79-905 \
+  --tunnel-through-iap \
+  -- -L 5432:10.68.0.4:5432 -N
+```
+
+Sin output es normal. Déjala abierta mientras usas DBeaver.
+
+### Paso 3 — Obtener la contraseña
+
+```bash
+gcloud secrets versions access latest \
+  --secret=db-password \
+  --project=project-7ceba286-c3bb-4d79-905
+```
+
+### Paso 4 — Configurar DBeaver
+
+| Campo | Valor |
+|-------|-------|
+| Host | `localhost` |
+| Port | `5432` |
+| Database | `jetex_pipeline` |
+| Username | `pipeline_writer` |
+| Password | (del paso anterior) |
+
+En la pestaña **SSL**: activar **Use SSL**, desactivar **Verify server certificate**.
+
+### Notas
+
+- El túnel reenvía `localhost:5432` directamente a la IP privada de Cloud SQL `10.68.0.4:5432` sin proxy intermedio.
+- La VM `sql-bastion` no tiene IP pública — SSH solo es accesible via IAP (rango `35.235.240.0/20`).
+- Si el puerto 5432 está ocupado en tu Mac, usa `-L 5433:10.68.0.4:5432` y conéctate al puerto `5433` en DBeaver.
+- El schema de trabajo es `staging` — configurar en DBeaver: Connection → PostgreSQL → Search path → `staging`.
+
+---
+
 ## Pendientes para Producción
 
 ### GitHub App para GitOps (reemplazar INFRA_REPO_TOKEN)

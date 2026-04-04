@@ -2,7 +2,7 @@
 
 resource "google_artifact_registry_repository" "docker" {
   repository_id = "docker-images"
-  location      = var.region
+  location      = "us-central1" # Fijo — independiente de var.region para no perder imágenes al cambiar la región de Cloud Run
   format        = "DOCKER"
   description   = "Docker images for Cloud Run services"
   project       = var.project_id

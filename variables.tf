@@ -4,9 +4,9 @@ variable "project_id" {
 }
 
 variable "region" {
-  description = "Default GCP region"
+  description = "Default GCP region — debe coincidir con db_region para que enable_private_path_for_google_cloud_services funcione desde Cloud Run sin VPC connector"
   type        = string
-  default     = "us-central1"
+  default     = "us-east4"
 }
 
 # --- Cloud SQL ---
