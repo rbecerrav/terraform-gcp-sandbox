@@ -8,7 +8,7 @@
 
 image_tags = {
   "accounting-fuel-savings" = "b9918ad"
-  "accounting-invoice"      = "latest"
+  "accounting-invoice"      = "9e48ea2"
   "aircraft-discrepancies"  = "b9918ad"
   "aircraft-logged-flights" = "11f9b8e"
   "aircraft-utilization"    = "b9918ad"
