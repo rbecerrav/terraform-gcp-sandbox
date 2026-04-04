@@ -56,7 +56,7 @@ resource "google_project_iam_member" "cicd_roles" {
 
 resource "google_artifact_registry_repository_iam_member" "cicd_ar_writer" {
   project    = var.project_id
-  location   = var.region
+  location   = "us-central1" # Fijo — AR está hardcodeado en us-central1, independiente de var.region
   repository = google_artifact_registry_repository.docker.name
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${google_service_account.cicd.email}"
