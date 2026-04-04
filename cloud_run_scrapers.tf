@@ -24,6 +24,11 @@ resource "google_cloud_run_v2_service" "scraper" {
       max_instance_count = 1
     }
 
+    vpc_access {
+      connector = google_vpc_access_connector.cloud_run.id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
     containers {
       # Imagen derivada automáticamente: el nombre del servicio (each.key) coincide con el nombre de la imagen en Artifact Registry
       image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/${each.key}:${local.image_tags[each.key]}"

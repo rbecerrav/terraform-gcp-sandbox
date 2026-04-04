@@ -14,6 +14,7 @@ resource "google_project_service" "apis" {
     "compute.googleapis.com",              # VPC networking — requerido para Private Service Access de Cloud SQL
     "servicenetworking.googleapis.com",    # Private Service Access — peering entre VPC y servicios de Google
     "iap.googleapis.com",                  # Identity-Aware Proxy — SSH tunneling al bastion sin IP pública
+    "vpcaccess.googleapis.com",            # Serverless VPC Access — VPC connector para Cloud Run → Cloud SQL
   ])
 
   project            = var.project_id

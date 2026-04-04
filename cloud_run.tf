@@ -22,6 +22,11 @@ resource "google_cloud_run_v2_service" "session_service" {
       max_instance_count = 1
     }
 
+    vpc_access {
+      connector = google_vpc_access_connector.cloud_run.id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
     containers {
       image = "us-central1-docker.pkg.dev/${var.project_id}/docker-images/session-service-api:${local.image_tags["session-service-api"]}"
 
