@@ -41,6 +41,7 @@ locals {
     "roles/compute.securityAdmin",           # Firewall rules (bastion IAP rule)
     "roles/servicenetworking.networksAdmin", # Private Service Access connections
     "roles/serviceusage.serviceUsageAdmin",  # Habilitar/deshabilitar GCP APIs
+    "roles/vpcaccess.admin",                 # Serverless VPC Access connectors
   ]
 }
 
