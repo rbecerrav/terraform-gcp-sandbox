@@ -26,7 +26,7 @@ resource "google_cloud_run_v2_service" "scraper" {
 
     vpc_access {
       connector = google_vpc_access_connector.cloud_run.id
-      egress    = "PRIVATE_RANGES_ONLY"
+      egress    = "ALL_TRAFFIC"
     }
 
     containers {

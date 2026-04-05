@@ -80,6 +80,15 @@ resource "google_secret_manager_secret_iam_member" "session_fly_belair_password"
 }
 
 # --- IAM: session-sa puede invocar session-service-api (Cloud Scheduler OIDC para login jobs) ---
+# --- IAM: scraper-sa puede invocar session-service-api (llamadas de scrapers ETL) ---
+
+resource "google_cloud_run_v2_service_iam_member" "scraper_invoker_session" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.session_service.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.scraper.email}"
+}
 
 resource "google_cloud_run_v2_service_iam_member" "session_invoker" {
   project  = var.project_id
