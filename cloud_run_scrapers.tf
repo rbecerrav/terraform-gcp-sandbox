@@ -88,6 +88,11 @@ resource "google_cloud_run_v2_service" "scraper" {
       }
 
       env {
+        name  = "PROJECT_NAME"
+        value = "scraper_${replace(each.key, "-", "_")}"
+      }
+
+      env {
         name  = "GCP_PROJECT_ID"
         value = var.project_id
       }
