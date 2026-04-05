@@ -127,3 +127,31 @@ resource "google_secret_manager_secret_iam_member" "scraper_db_password" {
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.scraper.email}"
 }
+
+resource "google_secret_manager_secret_iam_member" "scraper_jet_exc_email" {
+  secret_id = google_secret_manager_secret.jet_exc_email.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.scraper.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "scraper_jet_exc_password" {
+  secret_id = google_secret_manager_secret.jet_exc_password.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.scraper.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "scraper_fly_belair_email" {
+  secret_id = google_secret_manager_secret.fly_belair_email.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.scraper.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "scraper_fly_belair_password" {
+  secret_id = google_secret_manager_secret.fly_belair_password.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.scraper.email}"
+}

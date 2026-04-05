@@ -126,6 +126,46 @@ resource "google_cloud_run_v2_service" "scraper" {
           }
         }
       }
+
+      env {
+        name = "SESSION_EMAIL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.jet_exc_email.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SESSION_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.jet_exc_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SESSION_EMAIL_2"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.fly_belair_email.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SESSION_PASSWORD_2"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.fly_belair_password.secret_id
+            version = "latest"
+          }
+        }
+      }
     }
 
     volumes {
@@ -141,6 +181,10 @@ resource "google_cloud_run_v2_service" "scraper" {
     google_secret_manager_secret_iam_member.scraper_db_name,
     google_secret_manager_secret_iam_member.scraper_db_user,
     google_secret_manager_secret_iam_member.scraper_db_password,
+    google_secret_manager_secret_iam_member.scraper_jet_exc_email,
+    google_secret_manager_secret_iam_member.scraper_jet_exc_password,
+    google_secret_manager_secret_iam_member.scraper_fly_belair_email,
+    google_secret_manager_secret_iam_member.scraper_fly_belair_password,
     google_cloud_run_v2_service.session_service,
   ]
 }
