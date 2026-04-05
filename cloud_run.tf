@@ -12,7 +12,7 @@ resource "google_cloud_run_v2_service" "session_service" {
   name     = "session-service-api"
   location = var.region
   project  = var.project_id
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
     service_account = google_service_account.session.email
