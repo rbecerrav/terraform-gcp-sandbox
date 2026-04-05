@@ -1,2 +1,2 @@
 # GitOps — actualizado automáticamente por _docker-publish.yml. No modificar manualmente.
-image_tag_sales_productivity = "c15d1b9"
+image_tag_sales_productivity = "b6fd09f"
