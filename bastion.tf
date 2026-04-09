@@ -61,7 +61,7 @@ resource "google_compute_instance" "bastion" {
 
   network_interface {
     network    = google_compute_network.pipeline.id
-    subnetwork = google_compute_subnet.pipeline.id
+    subnetwork = google_compute_subnetwork.pipeline.id
     # Sin access_config → sin IP pública
   }
 

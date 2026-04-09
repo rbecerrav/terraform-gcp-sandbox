@@ -16,7 +16,7 @@ resource "google_compute_network" "pipeline" {
 # Subnet principal en la misma región que Cloud SQL y Cloud Run.
 # private_ip_google_access = true permite que la bastion VM acceda a APIs
 # de Google (Secret Manager, Cloud SQL Admin) sin necesitar IP pública.
-resource "google_compute_subnet" "pipeline" {
+resource "google_compute_subnetwork" "pipeline" {
   name          = "jetex-pipeline-subnet"
   project       = var.project_id
   region        = var.region
