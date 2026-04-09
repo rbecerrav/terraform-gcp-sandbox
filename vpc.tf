@@ -1,4 +1,32 @@
-# --- VPC: Private Service Access para Cloud SQL ---
+# --- VPC Custom: jetex-pipeline ---
+#
+# VPC dedicada para el proyecto — aislada de la VPC default del proyecto.
+# Evita compartir blast radius con otros servicios y permite control total
+# sobre las reglas de firewall y los rangos IP.
+
+resource "google_compute_network" "pipeline" {
+  name                    = "jetex-pipeline-vpc"
+  project                 = var.project_id
+  auto_create_subnetworks = false
+  routing_mode            = "REGIONAL"
+
+  depends_on = [google_project_service.apis]
+}
+
+# Subnet principal en la misma región que Cloud SQL y Cloud Run.
+# private_ip_google_access = true permite que la bastion VM acceda a APIs
+# de Google (Secret Manager, Cloud SQL Admin) sin necesitar IP pública.
+resource "google_compute_subnet" "pipeline" {
+  name          = "jetex-pipeline-subnet"
+  project       = var.project_id
+  region        = var.region
+  network       = google_compute_network.pipeline.id
+  ip_cidr_range = "10.10.0.0/24"
+
+  private_ip_google_access = true
+}
+
+# --- Private Service Access para Cloud SQL ---
 #
 # Permite que Cloud SQL use una IP privada en lugar de IP pública.
 # Cloud Run accede a Cloud SQL via Cloud SQL Auth Proxy con private path habilitado
@@ -17,15 +45,15 @@ resource "google_compute_global_address" "private_ip_range" {
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
-  network       = "projects/${var.project_id}/global/networks/default"
+  network       = google_compute_network.pipeline.id
 
   depends_on = [google_project_service.apis]
 }
 
-# Conexión de peering entre el VPC default y los servicios de Google.
+# Conexión de peering entre la VPC custom y los servicios de Google.
 # Permite que Cloud SQL tenga una IP privada dentro del rango reservado.
 resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = "projects/${var.project_id}/global/networks/default"
+  network                 = google_compute_network.pipeline.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
 

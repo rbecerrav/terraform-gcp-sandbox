@@ -28,7 +28,7 @@ resource "google_sql_database_instance" "pipeline" {
 
     ip_configuration {
       ipv4_enabled                                  = false
-      private_network                               = "projects/${var.project_id}/global/networks/default"
+      private_network                               = google_compute_network.pipeline.id
       enable_private_path_for_google_cloud_services = true
       ssl_mode                                      = "ENCRYPTED_ONLY"
     }

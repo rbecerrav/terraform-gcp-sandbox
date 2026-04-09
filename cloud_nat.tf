@@ -13,7 +13,7 @@ resource "google_compute_router" "nat_router" {
   name    = "cloud-nat-router"
   project = var.project_id
   region  = var.region
-  network = "default"
+  network = google_compute_network.pipeline.id
 
   depends_on = [google_project_service.apis]
 }

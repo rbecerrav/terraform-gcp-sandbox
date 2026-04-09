@@ -29,7 +29,7 @@ resource "google_project_iam_member" "bastion_cloudsql" {
 resource "google_compute_firewall" "allow_iap_ssh" {
   name    = "allow-iap-ssh-bastion"
   project = var.project_id
-  network = "default"
+  network = google_compute_network.pipeline.name
 
   allow {
     protocol = "tcp"
@@ -60,7 +60,8 @@ resource "google_compute_instance" "bastion" {
   }
 
   network_interface {
-    network = "default"
+    network    = google_compute_network.pipeline.id
+    subnetwork = google_compute_subnet.pipeline.id
     # Sin access_config → sin IP pública
   }
 

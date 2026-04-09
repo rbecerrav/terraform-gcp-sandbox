@@ -18,7 +18,7 @@ resource "google_vpc_access_connector" "cloud_run" {
   # Rango /28 dedicado dentro del VPC default — no colisiona con subnets existentes
   # ni con el rango reservado para Private Service Access (10.68.0.0/16)
   ip_cidr_range = "10.8.0.0/28"
-  network       = "default"
+  network       = google_compute_network.pipeline.id
 
   min_instances = 2
   max_instances = 3
