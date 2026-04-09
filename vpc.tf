@@ -26,6 +26,21 @@ resource "google_compute_subnetwork" "pipeline" {
   private_ip_google_access = true
 }
 
+# Subnet dedicada para el VPC connector (debe ser exactamente /28).
+# private_ip_google_access = true permite que el tráfico del conector
+# alcance Google APIs (sqladmin, secretmanager, etc.) via Private Google
+# Access sin salir a internet — necesario para Cloud SQL Auth Proxy
+# cuando egress = ALL_TRAFFIC.
+resource "google_compute_subnetwork" "vpc_connector" {
+  name          = "jetex-connector-subnet"
+  project       = var.project_id
+  region        = var.region
+  network       = google_compute_network.pipeline.id
+  ip_cidr_range = "10.10.1.0/28"
+
+  private_ip_google_access = true
+}
+
 # --- Private Service Access para Cloud SQL ---
 #
 # Permite que Cloud SQL use una IP privada en lugar de IP pública.

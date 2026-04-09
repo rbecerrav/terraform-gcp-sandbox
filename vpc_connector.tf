@@ -15,10 +15,15 @@ resource "google_vpc_access_connector" "cloud_run" {
   region  = var.region
   project = var.project_id
 
-  # Rango /28 dedicado dentro del VPC default — no colisiona con subnets existentes
-  # ni con el rango reservado para Private Service Access (10.68.0.0/16)
-  ip_cidr_range = "10.8.0.0/28"
-  network       = google_compute_network.pipeline.id
+  # Usa la subnet dedicada de la VPC custom en lugar de ip_cidr_range.
+  # jetex-pipeline-subnet tiene private_ip_google_access = true, lo que permite
+  # que las llamadas a Google APIs (sqladmin.googleapis.com, secretmanager, etc.)
+  # vayan por Private Google Access sin salir a internet — requerido para que
+  # el Cloud SQL Auth Proxy funcione con egress = ALL_TRAFFIC.
+  subnet {
+    name       = google_compute_subnetwork.vpc_connector.name
+    project_id = var.project_id
+  }
 
   min_instances = 2
   max_instances = 3
@@ -27,5 +32,6 @@ resource "google_vpc_access_connector" "cloud_run" {
   depends_on = [
     google_project_service.apis,
     google_project_iam_member.cicd_roles,
+    google_compute_subnetwork.vpc_connector,
   ]
 }

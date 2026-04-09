@@ -150,10 +150,11 @@ echo -n "<VALUE>" | gcloud secrets versions add <secret-name> --data-file=- --pr
 
 ### VPC and Networking
 
-- Uses the project's `default` VPC network
+- Uses a **dedicated VPC** `jetex-pipeline-vpc` (`auto_create_subnetworks = false`) — isolated from the project's `default` network
+- **Subnet:** `jetex-pipeline-subnet` — `10.10.0.0/24` in `us-east4`, `private_ip_google_access = true`
 - **Private Service Access:** `google_compute_global_address` reserves a /16 internal IP range for VPC peering with Google services
-- **VPC peering:** `google_service_networking_connection` connects the default VPC to `servicenetworking.googleapis.com`
-- Cloud SQL gets a private IP within this peered range
+- **VPC peering:** `google_service_networking_connection` connects `jetex-pipeline-vpc` to `servicenetworking.googleapis.com`
+- Cloud SQL gets a private IP within this peered range (`10.185.0.2`)
 - Cloud Run reaches Cloud SQL via Auth Proxy over Google's internal network (`enable_private_path_for_google_cloud_services = true`)
 
 ### Artifact Registry
@@ -373,7 +374,7 @@ gcloud compute ssh sql-bastion \
   --zone=us-east4-b \
   --project=project-7ceba286-c3bb-4d79-905 \
   --tunnel-through-iap \
-  -- -L 5432:10.68.0.4:5432 -N
+  -- -L 5432:10.185.0.2:5432 -N
 ```
 
 Sin output es normal. Déjala abierta mientras usas DBeaver.
@@ -400,10 +401,10 @@ En la pestaña **SSL**: activar **Use SSL**, desactivar **Verify server certific
 
 ### Notas
 
-- El túnel reenvía `localhost:5432` directamente a la IP privada de Cloud SQL `10.68.0.4:5432` sin proxy intermedio.
+- El túnel reenvía `localhost:5432` directamente a la IP privada de Cloud SQL `10.185.0.2:5432` sin proxy intermedio.
 - La VM `sql-bastion` no tiene IP pública — SSH solo es accesible via IAP (rango `35.235.240.0/20`).
-- Si el puerto 5432 está ocupado en tu Mac, usa `-L 5433:10.68.0.4:5432` y conéctate al puerto `5433` en DBeaver.
-- El schema de trabajo es `staging` — configurar en DBeaver: Connection → PostgreSQL → Search path → `staging`.
+- Si el puerto 5432 está ocupado en tu Mac, usa `-L 5433:10.185.0.2:5432` y conéctate al puerto `5433` en DBeaver.
+- El schema de trabajo es `staging` — configurar en DBeaver: Connection → PostgreSQL → Search path → `staging`. (En producción se usará `production`.)
 
 ---
 

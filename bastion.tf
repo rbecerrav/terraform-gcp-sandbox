@@ -78,6 +78,8 @@ resource "google_compute_instance" "bastion" {
     chmod +x /usr/local/bin/cloud-sql-proxy
   EOT
 
+  allow_stopping_for_update = true
+
   shielded_instance_config {
     enable_secure_boot          = true
     enable_vtpm                 = true
